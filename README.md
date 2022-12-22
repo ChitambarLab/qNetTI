@@ -24,7 +24,6 @@ Python tools and demos for inferring quantum network topology using local qubit 
 (qnetti-dev) $ pip install -e .
 ```
 
-
 ### Running Tests
 
 Run a particular test:
@@ -49,9 +48,7 @@ Run all tests in the `./test` directory:
 * `./demos` - User oriented demonstrations of application code
 
 
-
 ### Building Documentation
-
 
 
 ### API
