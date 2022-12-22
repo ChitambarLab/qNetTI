@@ -1,8 +1,14 @@
 # qNetTI: Quantum Network Topology Inferrer
-Python tools and demos for inferring quantum network topology using local qubit measurements (see [https://arxiv.org/abs/2212.07987](https://arxiv.org/abs/2212.07987)).
+
+*Python tools and demos for inferring quantum network topology.*
+
+[![Tests](https://github.com/ChitambarLab/qNetTI/actions/workflows/run_tests.yml/badge.svg?branch=main)](https://github.com/ChitambarLab/qNetTI/actions/workflows/run_tests.yml)[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+See our preprint titled "Inferring Quantum Network Topology using Local Qubit Measurements" for details [https://arxiv.org/abs/2212.07987](https://arxiv.org/abs/2212.07987).
 
 ## Development
 
+### Git Flow
 
 ### Environment Setup
 
