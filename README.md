@@ -38,14 +38,21 @@ Run all tests in the `./test` directory:
 (qnetti-dev) $ pytest
 ```
 
+### Formatting Code
+
+
+```
+(qnetti-dev) $ black -l 100 test src
+```
+
 
 ### Project Structure
 
 * `./src/qnetti` - Application code.
 * `./test` - Unit tests for application code.
-* `./script` - Numerical experiments and data collection.
-* `./data` - Stored data from numerical experiments.
-* `./demos` - User oriented demonstrations of application code
+* `./script` - *(Not Currently Implemented)* Numerical experiments and data collection.
+* `./data` - *(Not Currently Implemented)* Stored data from numerical experiments.
+* `./demos` - *(Not Currently Implemented)* User oriented notebooks demoing the application of our code. 
 
 
 ### Building Documentation

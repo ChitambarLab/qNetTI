@@ -1,0 +1,2 @@
+pennylane==0.27
+qnetvo==0.3
