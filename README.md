@@ -13,9 +13,12 @@ Python tools and demos for inferring quantum network topology using local qubit 
 
 ### Project Structure
 
-* `./script`
 * `./src`
 * `./test`
+* `./script`
+* `./data`
+* `./demos`
+
 
 
 ### Building Documentation
