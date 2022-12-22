@@ -1,10 +1,27 @@
 # qNetTI: Quantum Network Topology Inferrer
-Python tools and demos for inferring quantum network topology using local qubit measurements (see [https://arxiv.org/abs/2212.07987](https://arxiv.org/abs/2212.07987)).
+
+*Python tools and demos for inferring quantum network topology.*
+
+[![Tests](https://github.com/ChitambarLab/qNetTI/actions/workflows/run_tests.yml/badge.svg?branch=main)](https://github.com/ChitambarLab/qNetTI/actions/workflows/run_tests.yml)[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+See our preprint titled "Inferring Quantum Network Topology using Local Qubit Measurements" for details [https://arxiv.org/abs/2212.07987](https://arxiv.org/abs/2212.07987).
 
 ## Development
 
 
+### Git Flow
+
+It is best practice to develop new code in a `feature-branch`, and to merge that code into `main` via a *pull request*.
+Merging into `main` will require a code review and automated tests to pass. 
+For instructions, please review the [Git Flow Development Guide](https://github.com/ChitambarLab/Development-Guide#git-flow).
+
 ### Environment Setup
+
+To ensure a consistent development environment, use the [Anaconda](https://docs.conda.io/projects/conda/en/latest/glossary.html#anaconda-glossary).
+Follow the Anaconda [installation instructions](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html#installation) to set up the `conda` command line tool.
+For more details on how to use `conda` see the [managing environments web page](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html).
+
+To create the `qnetti-dev` environment, navigate to the root directory of the repository and follow these steps.
 
 1. Create the `qnetti-dev` Anaconda environment described in `environment.yml`:
 
@@ -26,6 +43,10 @@ Python tools and demos for inferring quantum network topology using local qubit 
 
 ### Running Tests
 
+All developed code should be tested for correctness.
+We use the [`pytest`](https://docs.pytest.org/en/7.2.x/) framework for this task.
+To run tests, use the following commands.
+
 Run a particular test:
 
 ```
@@ -40,6 +61,7 @@ Run all tests in the `./test` directory:
 
 ### Formatting Code
 
+Before committing changes, please autoformat your code.
 
 ```
 (qnetti-dev) $ black -l 100 test src
@@ -53,20 +75,4 @@ Run all tests in the `./test` directory:
 * `./script` - *(Not Currently Implemented)* Numerical experiments and data collection.
 * `./data` - *(Not Currently Implemented)* Stored data from numerical experiments.
 * `./demos` - *(Not Currently Implemented)* User oriented notebooks demoing the application of our code. 
-
-
-### Building Documentation
-
-
-### API
-
-qubit_characteristic_matrix(qnetvo.PrepareNode)
-
-qubit_covariance_matrix(qnetvo.PrepareNode)
-
-network_topology(qubit_characteristic_matrix or qubit_covariance_matrix) 
-
-
-
-
 
