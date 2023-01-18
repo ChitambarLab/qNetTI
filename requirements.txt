@@ -2,3 +2,4 @@ pennylane==0.27
 qiskit==0.32
 pennylane-qiskit==0.27
 qnetvo==0.3
+black[jupyter]
