@@ -14,7 +14,7 @@ def measured_mutual_info_cost_fn(ansatz, **qnode_kwargs):
     Formally, let :math:`X` and :math:`Y` be random variables representing measurement outcomes of two measurement
     devices in the network, where projective measurements :math:`\\{\\Pi^X\\}` and :math:`\\{\\Pi^Y\\}` are
     performed on respective devices. Then, the measured mutual information seeks to find the measurement bases
-    that maximizes the mutual information between :math:`X` and :math:`Y`:
+    that maximize the mutual information between :math:`X` and :math:`Y`:
 
     .. math::
 
@@ -99,10 +99,10 @@ def qubit_characteristic_matrix(prepare_node, step_size=0.05, num_steps=501, sho
     characteristic_matrix = np.zeros(shape=[num_qubits, num_qubits])
     # compute von Neumann entropies
     for qubit in range(num_qubits):
-        meas_node = [
-            qnetvo.MeasureNode(1, 1, wires=[qubit], quantum_fn=qml.ArbitraryUnitary, num_settings=3)
-        ]
-        ansatz = qnetvo.NetworkAnsatz([prepare_node], meas_node, dev_kwargs=device)
+        meas_node = qnetvo.MeasureNode(
+            1, 1, wires=[qubit], quantum_fn=qml.ArbitraryUnitary, num_settings=3
+        )
+        ansatz = qnetvo.NetworkAnsatz([prepare_node], [meas_node], dev_kwargs=device)
         cost = qnetvo.shannon_entropy_cost_fn(ansatz)
         settings = ansatz.rand_network_settings()
         dict = qnetvo.gradient_descent(
@@ -118,7 +118,7 @@ def qubit_characteristic_matrix(prepare_node, step_size=0.05, num_steps=501, sho
     # compute meausured mutual information
     for qubit_1 in range(num_qubits):
         for qubit_2 in range(qubit_1 + 1, num_qubits):
-            meas_node = [
+            meas_nodes = [
                 qnetvo.MeasureNode(
                     1, 1, wires=[qubit_1], quantum_fn=qml.ArbitraryUnitary, num_settings=3
                 ),
@@ -126,7 +126,7 @@ def qubit_characteristic_matrix(prepare_node, step_size=0.05, num_steps=501, sho
                     1, 1, wires=[qubit_2], quantum_fn=qml.ArbitraryUnitary, num_settings=3
                 ),
             ]
-            ansatz = qnetvo.NetworkAnsatz([prepare_node], meas_node)
+            ansatz = qnetvo.NetworkAnsatz([prepare_node], meas_nodes)
             cost = measured_mutual_info_cost_fn(ansatz)
             settings = ansatz.rand_network_settings()
             dict = qnetvo.gradient_descent(
@@ -168,15 +168,8 @@ def characteristic_matrix_decoder(characteristic_matrix, tol=1e-5):
     # convert characteristic matrix to binary (zero/non-zero)
     characteristic_matrix = np.where(characteristic_matrix > tol, 1, 0)
 
-    def array_to_string(arr):
-        dim = arr.shape[0]
-        string = ""
-        for i in range(dim):
-            string += str(arr[i])
-        return string
-
     for qubit in range(num_qubits):
-        prep_node = array_to_string(characteristic_matrix[qubit, :])
+        prep_node = "".join(map(str, characteristic_matrix[qubit, :]))
         if prep_node in network:
             qubit_list = network[prep_node]
             qubit_list.append(qubit)
