@@ -156,7 +156,7 @@ def characteristic_matrix_decoder(characteristic_matrix, tol=1e-5):
     :type: float
 
     :returns: a list of lists representing qubits that shares entanglement sources
-    :rtype: list
+    :rtype: list[list[int]]
     """
 
     num_qubits = characteristic_matrix.shape[0]
