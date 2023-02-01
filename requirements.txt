@@ -1,6 +1,6 @@
-pennylane==0.27
+pennylane==0.28
 qiskit==0.32
-pennylane-qiskit==0.27
-qnetvo==0.3
+pennylane-qiskit==0.28
+qnetvo==0.4.1
 black[jupyter]
 jupyter

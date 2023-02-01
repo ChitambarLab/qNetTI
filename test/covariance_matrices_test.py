@@ -30,7 +30,7 @@ class TestQubitCovarianceMatrixFn:
     )
     def test_qubit_covariance_matrix_ghz_state(self, num_wires, meas_settings, cov_mat_match):
         prep_node = qnetvo.PrepareNode(
-            num_in=1, wires=range(num_wires), quantum_fn=qnetvo.ghz_state, num_settings=0
+            num_in=1, wires=range(num_wires), ansatz_fn=qnetvo.ghz_state, num_settings=0
         )
         cov_mat_fn = qnetti.qubit_covariance_matrix_fn(prep_node)
 
@@ -46,9 +46,7 @@ class TestQubitCovarianceMatrixFn:
             qml.CNOT(wires=wires[0:2])
             qml.PauliX(wires=wires[0])
 
-        prep_node = qnetvo.PrepareNode(
-            num_in=1, wires=[0, 1, 2], quantum_fn=W_state, num_settings=0
-        )
+        prep_node = qnetvo.PrepareNode(num_in=1, wires=[0, 1, 2], ansatz_fn=W_state, num_settings=0)
         cov_mat_fn = qnetti.qubit_covariance_matrix_fn(prep_node)
 
         assert np.allclose(
@@ -72,7 +70,7 @@ class TestQubitCovarianceCostFn:
     )
     def test_qubit_covariance_cost_fn_ghz_state(self, num_wires, meas_settings, cost_match):
         prep_node = qnetvo.PrepareNode(
-            num_in=1, wires=range(num_wires), quantum_fn=qnetvo.ghz_state, num_settings=0
+            num_in=1, wires=range(num_wires), ansatz_fn=qnetvo.ghz_state, num_settings=0
         )
         cov_cost = qnetti.qubit_covariance_cost_fn(prep_node)
 

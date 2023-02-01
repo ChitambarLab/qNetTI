@@ -34,11 +34,11 @@ def measured_mutual_info_cost_fn(ansatz, **qnode_kwargs):
     :rtype: Function
 
     """
-    num_prep_nodes = len(ansatz.prepare_nodes)
-    num_meas_nodes = len(ansatz.measure_nodes)
-    num_qubits = len(ansatz.measure_wires)
-    X_num_qubits = len(ansatz.measure_nodes[0].wires)
-    Y_num_qubits = len(ansatz.measure_nodes[1].wires)
+    num_prep_nodes = len(ansatz.layers[0])
+    num_meas_nodes = len(ansatz.layers[-1])
+    num_qubits = len(ansatz.layers_wires[-1])
+    X_num_qubits = len(ansatz.layers[-1][0].wires)
+    Y_num_qubits = len(ansatz.layers[-1][1].wires)
 
     probs_qnode = qnetvo.joint_probs_qnode(ansatz, **qnode_kwargs)
 
@@ -100,7 +100,7 @@ def qubit_characteristic_matrix(prepare_node, step_size=0.05, num_steps=501, sho
     # compute von Neumann entropies
     for qubit in range(num_qubits):
         meas_node = qnetvo.MeasureNode(
-            1, 1, wires=[qubit], quantum_fn=qml.ArbitraryUnitary, num_settings=3
+            1, 1, wires=[qubit], ansatz_fn=qml.ArbitraryUnitary, num_settings=3
         )
         ansatz = qnetvo.NetworkAnsatz([prepare_node], [meas_node], dev_kwargs=device)
         cost = qnetvo.shannon_entropy_cost_fn(ansatz)
@@ -120,10 +120,10 @@ def qubit_characteristic_matrix(prepare_node, step_size=0.05, num_steps=501, sho
         for qubit_2 in range(qubit_1 + 1, num_qubits):
             meas_nodes = [
                 qnetvo.MeasureNode(
-                    1, 1, wires=[qubit_1], quantum_fn=qml.ArbitraryUnitary, num_settings=3
+                    1, 1, wires=[qubit_1], ansatz_fn=qml.ArbitraryUnitary, num_settings=3
                 ),
                 qnetvo.MeasureNode(
-                    1, 1, wires=[qubit_2], quantum_fn=qml.ArbitraryUnitary, num_settings=3
+                    1, 1, wires=[qubit_2], ansatz_fn=qml.ArbitraryUnitary, num_settings=3
                 ),
             ]
             ansatz = qnetvo.NetworkAnsatz([prepare_node], meas_nodes)

@@ -45,7 +45,7 @@ def qubit_covariance_matrix_fn(prep_node, dev_kwargs={}, qnode_kwargs={}):
     qubit_rot = lambda settings, wires: qml.Rot(*settings[:3], wires=wires)
 
     meas_nodes = [
-        qnetvo.MeasureNode(1, 1, wires=[wire], quantum_fn=qubit_rot, num_settings=3)
+        qnetvo.MeasureNode(1, 1, wires=[wire], ansatz_fn=qubit_rot, num_settings=3)
         for wire in prep_node.wires
     ]
 

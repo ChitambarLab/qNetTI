@@ -13,16 +13,16 @@ def test_measured_mutual_info_cost_fn():
         qml.CNOT(wires=[wires[2], wires[3]])
 
     prep_node = qnetvo.PrepareNode(
-        num_in=1, wires=[0, 1, 2, 3], quantum_fn=state_prep, num_settings=0
+        num_in=1, wires=[0, 1, 2, 3], ansatz_fn=state_prep, num_settings=0
     )
 
     # test entangled qubits
     meas_nodes = [
         qnetvo.MeasureNode(
-            num_in=1, num_out=1, wires=[0], quantum_fn=qml.ArbitraryUnitary, num_settings=3
+            num_in=1, num_out=1, wires=[0], ansatz_fn=qml.ArbitraryUnitary, num_settings=3
         ),
         qnetvo.MeasureNode(
-            num_in=1, num_out=1, wires=[1], quantum_fn=qml.ArbitraryUnitary, num_settings=3
+            num_in=1, num_out=1, wires=[1], ansatz_fn=qml.ArbitraryUnitary, num_settings=3
         ),
     ]
     cost_fn = qnetti.measured_mutual_info_cost_fn(qnetvo.NetworkAnsatz([prep_node], meas_nodes))
@@ -34,10 +34,10 @@ def test_measured_mutual_info_cost_fn():
     # test unentangled qubits
     meas_nodes = [
         qnetvo.MeasureNode(
-            num_in=1, num_out=1, wires=[1], quantum_fn=qml.ArbitraryUnitary, num_settings=3
+            num_in=1, num_out=1, wires=[1], ansatz_fn=qml.ArbitraryUnitary, num_settings=3
         ),
         qnetvo.MeasureNode(
-            num_in=1, num_out=1, wires=[2], quantum_fn=qml.ArbitraryUnitary, num_settings=3
+            num_in=1, num_out=1, wires=[2], ansatz_fn=qml.ArbitraryUnitary, num_settings=3
         ),
     ]
     cost_fn = qnetti.measured_mutual_info_cost_fn(qnetvo.NetworkAnsatz([prep_node], meas_nodes))
@@ -49,13 +49,14 @@ def test_measured_mutual_info_cost_fn():
 
 def test_qubit_characteristic_matrix():
     np.random.seed(102)
+
     # test that no entanglement sources are present
     def state_prep(settings, wires):
         qml.Hadamard(wires=wires[0])
         qml.Hadamard(wires=wires[1])
         qml.Hadamard(wires=wires[2])
 
-    prep_node = qnetvo.PrepareNode(num_in=1, wires=[0, 1, 2], quantum_fn=state_prep, num_settings=0)
+    prep_node = qnetvo.PrepareNode(num_in=1, wires=[0, 1, 2], ansatz_fn=state_prep, num_settings=0)
     assert np.allclose(
         qnetti.qubit_characteristic_matrix(prep_node, step_size=0.1, num_steps=25),
         np.zeros(shape=(3, 3)),
@@ -63,13 +64,14 @@ def test_qubit_characteristic_matrix():
     )
 
     np.random.seed(151)
+
     # test for one entanglement source
     def state_prep(settings, wires):
         qml.Hadamard(wires=wires[0])
         qml.CNOT(wires=[wires[0], wires[1]])
         qml.CNOT(wires=[wires[1], wires[2]])
 
-    prep_node = qnetvo.PrepareNode(num_in=1, wires=[0, 1, 2], quantum_fn=state_prep, num_settings=0)
+    prep_node = qnetvo.PrepareNode(num_in=1, wires=[0, 1, 2], ansatz_fn=state_prep, num_settings=0)
     assert np.allclose(
         qnetti.qubit_characteristic_matrix(prep_node, step_size=0.1, num_steps=25),
         np.ones(shape=(3, 3)),
@@ -84,7 +86,7 @@ def test_qubit_characteristic_matrix():
         qml.CNOT(wires=[wires[2], wires[3]])
 
     prep_node = qnetvo.PrepareNode(
-        num_in=1, wires=[0, 1, 2, 3], quantum_fn=state_prep, num_settings=0
+        num_in=1, wires=[0, 1, 2, 3], ansatz_fn=state_prep, num_settings=0
     )
     assert np.allclose(
         qnetti.qubit_characteristic_matrix(prep_node, step_size=0.1, num_steps=25),

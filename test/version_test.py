@@ -4,7 +4,6 @@ import qnetti
 
 
 def test_version():
-
     version_str = qnetti.__version__
 
     assert isinstance(version_str, str)
