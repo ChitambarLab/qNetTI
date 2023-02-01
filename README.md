@@ -41,6 +41,18 @@ To create the `qnetti-dev` environment, navigate to the root directory of the re
 (qnetti-dev) $ pip install -e .
 ```
 
+### Running Demos
+
+Demos are written using [Jupyter Notebooks](https://jupyter.org/).
+When the conda development environment is set up, a Jupyter notebook server can be set up locally:
+
+```
+(qnetti-dev) $ jupyter notebook
+```
+
+This command should launch a web page in your default browser.
+From there navigate to the `./demos` directory to view the available notebooks.
+
 ### Running Tests
 
 All developed code should be tested for correctness.
@@ -64,7 +76,7 @@ Run all tests in the `./test` directory:
 Before committing changes, please autoformat your code.
 
 ```
-(qnetti-dev) $ black -l 100 test src
+(qnetti-dev) $ black -l 100 test src demos
 ```
 
 
@@ -74,5 +86,5 @@ Before committing changes, please autoformat your code.
 * `./test` - Unit tests for application code.
 * `./script` - *(Not Currently Implemented)* Numerical experiments and data collection.
 * `./data` - *(Not Currently Implemented)* Stored data from numerical experiments.
-* `./demos` - *(Not Currently Implemented)* User oriented notebooks demoing the application of our code. 
+* `./demos` - User oriented notebooks demoing the application of our code. 
 

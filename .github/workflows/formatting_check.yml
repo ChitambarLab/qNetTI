@@ -21,7 +21,9 @@ jobs:
           python-version: 3.8
 
       - name: Install dependencies
-        run: pip install black
+        run: |
+          pip install black
+          pip install black[jupyter]
 
       - uses: actions/checkout@v2
 
@@ -29,3 +31,4 @@ jobs:
         run: |
           black -l 100 test/ --check
           black -l 100 src/ --check
+          black -l 100 demos/ --check
