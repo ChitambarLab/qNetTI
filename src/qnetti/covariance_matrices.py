@@ -93,6 +93,6 @@ def qubit_covariance_cost_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kw
 
     def qubit_covariance_cost(*meas_settings):
         mat = cov_mat(meas_settings)
-        return -np.trace(mat.T @ mat)
+        return -qml.math.trace(mat.T @ mat)
 
     return qubit_covariance_cost
