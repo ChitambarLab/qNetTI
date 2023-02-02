@@ -3,7 +3,7 @@ import pennylane as qml
 import qnetvo
 
 
-def qubit_covariance_matrix_fn(prep_node, dev_kwargs={}, qnode_kwargs={}):
+def qubit_covariance_matrix_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kwargs={}):
     """Generates a function that evaluates the covariance matrix for local
     qubit measurements.
 
@@ -43,10 +43,11 @@ def qubit_covariance_matrix_fn(prep_node, dev_kwargs={}, qnode_kwargs={}):
     
     """
     qubit_rot = lambda settings, wires: qml.Rot(*settings[:3], wires=wires)
+    wires = meas_wires if meas_wires else prep_node.wires
 
     meas_nodes = [
         qnetvo.MeasureNode(1, 1, wires=[wire], ansatz_fn=qubit_rot, num_settings=3)
-        for wire in prep_node.wires
+        for wire in wires
     ]
 
     ansatz = qnetvo.NetworkAnsatz([prep_node], meas_nodes, dev_kwargs=dev_kwargs)
@@ -79,7 +80,9 @@ def qubit_covariance_cost_fn(prep_node, dev_kwargs={}, qnode_kwargs={}):
     :rtype: function
     """
 
-    cov_mat = qubit_covariance_matrix_fn(prep_node, dev_kwargs, qnode_kwargs)
+    cov_mat = qubit_covariance_matrix_fn(
+        prep_node, dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
+    )
 
     def qubit_covariance_cost(*meas_settings):
         mat = cov_mat(meas_settings)
