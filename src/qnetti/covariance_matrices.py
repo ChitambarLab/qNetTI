@@ -3,7 +3,7 @@ import pennylane as qml
 import qnetvo
 
 
-def qubit_covariance_matrix_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kwargs={}):
+def qubit_covariance_matrix_fn(prep_node, meas_wires=None, shots=None, qnode_kwargs={}):
     """Generates a function that evaluates the covariance matrix for local
     qubit measurements.
 
@@ -36,34 +36,37 @@ def qubit_covariance_matrix_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_
                        all wires in the prepare node are considered. This can be used to ignore ancillary qubits. 
     :type meas_wires: list[int]
 
-    :param dev_kwargs: Keyword arguments passed to the PennyLane device constructor.
-    :type dev_kwargs: dict
+    :param shots: The number of shots in each circuit run. Defaults to analytic mode ``shots=None``.
+    :type shots: int
 
     :param qnode_kwargs: Keyword arguments passed to the PennyLane qnode constructor.
     :type qnode_kwargs: dict
 
-    :returns: A function, ``covari
+    :returns: A function, ``covariance_matrix(meas_settings)`` that takes as input a
+              ``list[float]`` of length ``3 * num_wires``.
     :rtype: function
-    
     """
     wires = meas_wires if meas_wires else prep_node.wires
 
-    meas_nodes = [
-        qnetvo.MeasureNode(1, 1, wires=[wire], ansatz_fn=qml.ArbitraryUnitary, num_settings=3)
-        for wire in wires
-    ]
+    dev = qml.device("default.qubit", wires=prep_node.wires, shots=shots)
 
-    ansatz = qnetvo.NetworkAnsatz([prep_node], meas_nodes, dev_kwargs=dev_kwargs)
-    joint_probs = qnetvo.joint_probs_qnode(ansatz, **qnode_kwargs)
+    @qml.qnode(dev, **qnode_kwargs)
+    def circ(settings):
+        prep_node([])
+
+        for i, wire in enumerate(wires):
+            qml.ArbitraryUnitary(settings[3 * i : 3 * i + 3], wires=[wire])
+
+        return qml.probs(wires=wires)
 
     return lambda meas_settings: qml.math.cov_matrix(
-        joint_probs(meas_settings),
+        circ(meas_settings),
         [qml.PauliZ(wire) for wire in wires],
         wires=qml.wires.Wires(wires),
     )
 
 
-def qubit_covariance_cost_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kwargs={}):
+def qubit_covariance_cost_fn(prep_node, meas_wires=None, shots=None, qnode_kwargs={}):
     """Constructs a cost function that, when minimized, yields the maximal
     distance between the covariance matrix of the `prep_node` and the origin.
 
@@ -77,21 +80,19 @@ def qubit_covariance_cost_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kw
                        all wires in the prepare node are considered. This can be used to ignore ancillary qubits.
     :type meas_wires: list[int]
 
-    :param dev_kwargs: Keyword arguments passed to the PennyLane device constructor.
-    :type dev_kwargs: dict
-
     :param qnode_kwargs: Keyword arguments passed to the PennyLane qnode constructor.
     :type qnode_kwargs: dict
 
-    :returns: A function evaluated as ``cost(*meas_settings)``
+    :returns: A function evaluated as ``cost(meas_settings)`` that takes as input a
+              ``list[float]`` of length ``3 * num_wires``.
     :rtype: function
     """
 
     cov_mat = qubit_covariance_matrix_fn(
-        prep_node, meas_wires=meas_wires, dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
+        prep_node, meas_wires=meas_wires, shots=shots, qnode_kwargs=qnode_kwargs
     )
 
-    def qubit_covariance_cost(*meas_settings):
+    def qubit_covariance_cost(meas_settings):
         mat = cov_mat(meas_settings)
         return -qml.math.trace(mat.T @ mat)
 
