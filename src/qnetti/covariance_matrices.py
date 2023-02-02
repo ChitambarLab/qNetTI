@@ -32,6 +32,10 @@ def qubit_covariance_matrix_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_
     :param prep_node: A network node that prepares the quantum state to evaluate.
     :type prep_node: qnetvo.PrepareNode
 
+    :param meas_wires: The wires to measure when evaluating the covariance matrix. If ``meas_wires`` are not specified,
+                       all wires in the prepare node are considered. This can be used to ignore ancillary qubits. 
+    :type meas_wires: list[int]
+
     :param dev_kwargs: Keyword arguments passed to the PennyLane device constructor.
     :type dev_kwargs: dict
 
@@ -42,11 +46,10 @@ def qubit_covariance_matrix_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_
     :rtype: function
     
     """
-    qubit_rot = lambda settings, wires: qml.Rot(*settings[:3], wires=wires)
     wires = meas_wires if meas_wires else prep_node.wires
 
     meas_nodes = [
-        qnetvo.MeasureNode(1, 1, wires=[wire], ansatz_fn=qubit_rot, num_settings=3)
+        qnetvo.MeasureNode(1, 1, wires=[wire], ansatz_fn=qml.ArbitraryUnitary, num_settings=3)
         for wire in wires
     ]
 
@@ -55,12 +58,12 @@ def qubit_covariance_matrix_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_
 
     return lambda meas_settings: qml.math.cov_matrix(
         joint_probs(meas_settings),
-        [qml.PauliZ(wire) for wire in prep_node.wires],
-        wires=qml.wires.Wires(prep_node.wires),
+        [qml.PauliZ(wire) for wire in wires],
+        wires=qml.wires.Wires(wires),
     )
 
 
-def qubit_covariance_cost_fn(prep_node, dev_kwargs={}, qnode_kwargs={}):
+def qubit_covariance_cost_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kwargs={}):
     """Constructs a cost function that, when minimized, yields the maximal
     distance between the covariance matrix of the `prep_node` and the origin.
 
@@ -69,6 +72,10 @@ def qubit_covariance_cost_fn(prep_node, dev_kwargs={}, qnode_kwargs={}):
 
     :param prep_node: A network node that prepares the quantum state to evaluate.
     :type prep_node: qnetvo.PrepareNode
+
+    :param meas_wires: The wires to measure when evaluating the covariance matrix. If ``meas_wires`` are not specified,
+                       all wires in the prepare node are considered. This can be used to ignore ancillary qubits.
+    :type meas_wires: list[int]
 
     :param dev_kwargs: Keyword arguments passed to the PennyLane device constructor.
     :type dev_kwargs: dict
@@ -81,7 +88,7 @@ def qubit_covariance_cost_fn(prep_node, dev_kwargs={}, qnode_kwargs={}):
     """
 
     cov_mat = qubit_covariance_matrix_fn(
-        prep_node, dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
+        prep_node, meas_wires=meas_wires, dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
     )
 
     def qubit_covariance_cost(*meas_settings):

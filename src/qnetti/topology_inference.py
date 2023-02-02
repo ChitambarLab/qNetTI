@@ -174,3 +174,7 @@ def characteristic_matrix_decoder(characteristic_matrix, tol=1e-5):
             network[prep_node] = [qubit]
 
     return [network[prep_node] for prep_node in network]
+
+
+def matrix_distance(mat1, mat2):
+    np.linalg.norm(mat1, mat2)
