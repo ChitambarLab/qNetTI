@@ -4,8 +4,7 @@ import pennylane.numpy as np
 
 
 def measured_mutual_info_cost_fn(ansatz, **qnode_kwargs):
-    """
-    Constructs an ansatz-specific measured mutual information cost function.
+    """Constructs an ansatz-specific measured mutual information cost function.
 
     In the context of quantum networks, the measured mutual information seeks to quantify the correlation between
     measurement statistics of a pair of measurement devices, where measurements are performed locally on each
@@ -47,6 +46,7 @@ def measured_mutual_info_cost_fn(ansatz, **qnode_kwargs):
             network_settings, [[0] * num_prep_nodes, [0] * num_meas_nodes]
         )
         probs_vec = probs_qnode(settings)
+
         probs_tensor = probs_vec.reshape((2,) * (X_num_qubits + Y_num_qubits))
 
         HX = qnetvo.shannon_entropy(
@@ -109,11 +109,12 @@ def qubit_characteristic_matrix(
             cost,
             settings,
             step_size=step_size,
-            sample_width=num_steps - 1,
+            sample_width=1,
             num_steps=num_steps,
             verbose=False,
         )
-        characteristic_matrix[q, q] = -dict["scores"][-1]
+
+        characteristic_matrix[q, q] = -max(dict["scores"])
 
     # compute meausured mutual information
     for q1 in range(num_qubits):
@@ -122,19 +123,19 @@ def qubit_characteristic_matrix(
                 qnetvo.MeasureNode(wires=[q1], ansatz_fn=qml.ArbitraryUnitary, num_settings=3),
                 qnetvo.MeasureNode(wires=[q2], ansatz_fn=qml.ArbitraryUnitary, num_settings=3),
             ]
-            ansatz = qnetvo.NetworkAnsatz([prepare_node], meas_nodes)
+            ansatz = qnetvo.NetworkAnsatz([prepare_node], meas_nodes, dev_kwargs=device)
             cost = measured_mutual_info_cost_fn(ansatz, **qnode_kwargs)
             settings = ansatz.rand_network_settings()
             dict = qnetvo.gradient_descent(
                 cost,
                 settings,
                 step_size=step_size,
-                sample_width=num_steps - 1,
+                sample_width=1,
                 num_steps=num_steps,
                 verbose=False,
             )
-            characteristic_matrix[q1, q2] = dict["scores"][-1]
-            characteristic_matrix[q2, q1] = dict["scores"][-1]
+            characteristic_matrix[q1, q2] = max(dict["scores"])
+            characteristic_matrix[q2, q1] = max(dict["scores"])
 
     return characteristic_matrix
 
@@ -174,7 +175,3 @@ def characteristic_matrix_decoder(characteristic_matrix, tol=1e-5):
             network[prep_node] = [qubit]
 
     return [network[prep_node] for prep_node in network]
-
-
-def matrix_distance(mat1, mat2):
-    np.linalg.norm(mat1, mat2)
