@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 import pennylane as qml
+from pennylane import numpy as qnp
 import qnetvo
 
 import qnetti
@@ -29,51 +30,113 @@ class TestQubitCovarianceMatrixFn:
         ],
     )
     def test_qubit_covariance_matrix_ghz_state(self, num_wires, meas_settings, cov_mat_match):
-        prep_node = qnetvo.PrepareNode(
-            num_in=1, wires=range(num_wires), quantum_fn=qnetvo.ghz_state, num_settings=0
-        )
+        prep_node = qnetvo.PrepareNode(wires=range(num_wires), ansatz_fn=qnetvo.ghz_state)
         cov_mat_fn = qnetti.qubit_covariance_matrix_fn(prep_node)
 
         assert np.allclose(cov_mat_fn(meas_settings), cov_mat_match)
 
     def test_qubit_covariance_matrix_W_state(self):
-        def W_state(settings, wires):
-            phi = 2 * np.arccos(1 / np.sqrt(3))
-            qml.RY(phi, wires=wires[0])
-            qml.CRot(-2 * np.pi, np.pi / 2, 2 * np.pi, wires=wires[0:2])
-
-            qml.CNOT(wires=wires[1:3])
-            qml.CNOT(wires=wires[0:2])
-            qml.PauliX(wires=wires[0])
-
-        prep_node = qnetvo.PrepareNode(
-            num_in=1, wires=[0, 1, 2], quantum_fn=W_state, num_settings=0
-        )
+        prep_node = qnetvo.PrepareNode(wires=[0, 1, 2], ansatz_fn=qnetvo.W_state)
         cov_mat_fn = qnetti.qubit_covariance_matrix_fn(prep_node)
 
         assert np.allclose(
             cov_mat_fn(np.zeros(9)), np.array([[8, -4, -4], [-4, 8, -4], [-4, -4, 8]]) / 9
         )
 
+    @pytest.mark.parametrize(
+        "angle, cov_match",
+        [(np.pi / 2, np.ones((3, 3))), (np.pi / 4, np.ones((3, 3)) / 2)],
+    )
+    def test_qubit_covariance_matrix_shared_coin_flip_state(self, angle, cov_match):
+        prep_node = qnetvo.PrepareNode(
+            wires=[0, 1, 2, 3],
+            ansatz_fn=lambda settings, wires: qnetvo.shared_coin_flip_state([angle], wires),
+        )
+        cov_mat_fn = qnetti.qubit_covariance_matrix_fn(prep_node, meas_wires=[0, 1, 2])
+
+        assert np.allclose(cov_mat_fn(np.zeros(9)), cov_match)
+
+    @pytest.mark.parametrize(
+        "num_wires, meas_settings, cov_mat_match",
+        [
+            (2, [0, 0, 0, 0, 0, 0], [[1, 1], [1, 1]]),
+            (2, [0, np.pi / 4, 0, 0, 0, 0], [[1, 1 / np.sqrt(2)], [1 / np.sqrt(2), 1]]),
+            (2, [0, np.pi / 2, 0, 0, 0, 0], [[1, 0], [0, 1]]),
+            (2, [0, np.pi / 2, 0, 0, np.pi / 2, 0], [[1, 1], [1, 1]]),
+            (2, [0, 0, 0, 0, np.pi, 0], [[1, -1], [-1, 1]]),
+        ],
+    )
+    def test_qubit_covariance_matrix_finite_shots(self, num_wires, meas_settings, cov_mat_match):
+        np.random.seed(65)
+        prep_node = qnetvo.PrepareNode(wires=range(num_wires), ansatz_fn=qnetvo.ghz_state)
+        cov_mat_fn = qnetti.qubit_covariance_matrix_fn(prep_node, shots=20000)
+
+        assert np.allclose(cov_mat_fn(meas_settings), cov_mat_match, atol=1e-2)
+
 
 class TestQubitCovarianceCostFn:
     @pytest.mark.parametrize(
-        "num_wires, meas_settings, cost_match",
+        "num_wires, meas_settings, meas_wires, cost_match",
         [
-            (2, [0, 0, 0, 0, 0, 0], -4),
-            (2, [0, np.pi / 4, 0, 0, 0, 0], -3),
-            (2, [0, np.pi / 2, 0, 0, 0, 0], -2),
-            (2, [0, np.pi / 2, 0, 0, np.pi / 2, 0], -4),
-            (2, [0, 0, 0, 0, np.pi, 0], -4),
-            (3, [0, 0, 0, 0, 0, 0, 0, 0, 0], -9),
-            (3, [0, np.pi / 4, 0, 0, 0, 0, 0, 0, 0], -7),
-            (3, [0, np.pi / 2, 0, 0, 0, 0, 0, np.pi, 0], -5),
+            (2, [0, 0, 0, 0, 0, 0], None, -4),
+            (2, [0, np.pi / 4, 0, 0, 0, 0], None, -3),
+            (2, [0, np.pi / 2, 0, 0, 0, 0], None, -2),
+            (2, [0, np.pi / 2, 0, 0, np.pi / 2, 0], None, -4),
+            (2, [0, 0, 0, 0, np.pi, 0], None, -4),
+            (3, [0, 0, 0, 0, 0, 0, 0, 0, 0], None, -9),
+            (3, [0, np.pi / 4, 0, 0, 0, 0, 0, 0, 0], None, -7),
+            (3, [0, np.pi / 2, 0, 0, 0, 0, 0, np.pi, 0], None, -5),
+            (3, [0, 0, 0, 0, 0, 0], [0, 1], -4),
         ],
     )
-    def test_qubit_covariance_cost_fn_ghz_state(self, num_wires, meas_settings, cost_match):
-        prep_node = qnetvo.PrepareNode(
-            num_in=1, wires=range(num_wires), quantum_fn=qnetvo.ghz_state, num_settings=0
-        )
-        cov_cost = qnetti.qubit_covariance_cost_fn(prep_node)
+    def test_qubit_covariance_cost_fn_ghz_state(
+        self, num_wires, meas_settings, meas_wires, cost_match
+    ):
+        prep_node = qnetvo.PrepareNode(wires=range(num_wires), ansatz_fn=qnetvo.ghz_state)
+        cov_cost = qnetti.qubit_covariance_cost_fn(prep_node, meas_wires=meas_wires)
 
-        assert np.allclose(cov_cost(*meas_settings), cost_match)
+        assert np.allclose(cov_cost(meas_settings), cost_match)
+
+    @pytest.mark.parametrize(
+        "num_wires, meas_settings, meas_wires, cost_match",
+        [
+            (2, [0, 0, 0, 0, 0, 0], None, -4),
+            (2, [0, np.pi / 4, 0, 0, 0, 0], None, -3),
+            (2, [0, np.pi / 2, 0, 0, 0, 0], None, -2),
+            (2, [0, np.pi / 2, 0, 0, np.pi / 2, 0], None, -4),
+            (2, [0, 0, 0, 0, np.pi, 0], None, -4),
+            (3, [0, 0, 0, 0, 0, 0, 0, 0, 0], None, -9),
+            (3, [0, np.pi / 4, 0, 0, 0, 0, 0, 0, 0], None, -7),
+            (3, [0, np.pi / 2, 0, 0, 0, 0, 0, np.pi, 0], None, -5),
+            (3, [0, 0, 0, 0, 0, 0], [0, 1], -4),
+        ],
+    )
+    def test_qubit_covariance_cost_fn_finite_shot(
+        self, num_wires, meas_settings, meas_wires, cost_match
+    ):
+        prep_node = qnetvo.PrepareNode(wires=range(num_wires), ansatz_fn=qnetvo.ghz_state)
+        cov_cost = qnetti.qubit_covariance_cost_fn(prep_node, meas_wires=meas_wires, shots=20000)
+
+        assert np.allclose(cov_cost(meas_settings), cost_match, atol=1e-2)
+
+    @pytest.mark.parametrize(
+        "qnode_kwargs",
+        [{}, {"diff_method": "parameter-shift"}],
+    )
+    def test_qubit_covariance_cost_optimization(self, qnode_kwargs):
+        prep_node = qnetvo.PrepareNode(wires=range(2), ansatz_fn=qnetvo.ghz_state)
+        cov_cost = qnetti.qubit_covariance_cost_fn(prep_node, shots=1000, qnode_kwargs=qnode_kwargs)
+        cov_mat = qnetti.qubit_covariance_matrix_fn(
+            prep_node, shots=1000, qnode_kwargs=qnode_kwargs
+        )
+
+        opt = qml.GradientDescentOptimizer(stepsize=0.05)
+
+        qnp.random.seed(55)
+        settings = qnp.random.rand(6, requires_grad=True)
+
+        for i in range(10):
+            settings, cost_val = opt.step_and_cost(cov_cost, settings)
+
+        assert np.isclose(cost_val, -4, atol=1e-2)
+        assert np.allclose(cov_mat(settings), np.ones((2, 2)), atol=1e-3)
