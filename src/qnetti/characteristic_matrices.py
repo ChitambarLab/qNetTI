@@ -94,9 +94,31 @@ def qubit_mutual_infos(probs_vec):
 
 
 def shannon_entropy_cost_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kwargs={}):
-    """
+    """Constructs a cost function from the sum of Shannon entropoes on each qubit.
+
+    Let :math:`X_i` denote the random variable associated with the :math:`i^{th}` qubit's
+    measurement result. The Shannon entropy cost function is then
+
+    .. math::
+
+        Cost = \\sum_{i} H(X_i)
+
+    where the Shannon entropy :math:`H(X_i)` is evaluated in :meth:`qnetti.qubit_shannon_entropies`.
+
+    :param prep_node: a network node that prepares the quantum state to evaluate
+    :type prep_node: qnetvo.PrepareNode
+
+    :param meas_wires: The qubit wires to measure in the network. If ``None`` all wires are measured.
+    :type meas_wires: list[int]
+
     :param dev_kwargs: Keyword arguments passed to the PennyLane device constructor.
     :type dev_kwargs: dict
+
+    :param qnode_kwargs: Keyword arguments passed to the PennyLane qnode constructor.
+    :type qnode_kwargs: dict
+
+    :returns: A function ``shannon_entropy_cost(settings)`` that evaluates the specified cost function.
+    :rtype: qml.QNode
     """
 
     probs_qnode = qubit_probs_qnode_fn(
@@ -112,18 +134,40 @@ def shannon_entropy_cost_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kwa
 
 
 def mutual_info_cost_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kwargs={}):
-    """
+    """Constructs a cost function from the sum of mutual information across all unique pairs
+    of qubits in the network.
+
+    Let :math:`X_i` denote the random variable associated with the :math:`i^{th}` qubit's
+    measurement result. The mutual information cost function is then
+
+    .. math::
+
+        Cost = -\\sum_{i < j} I(X_i ; X_j)
+
+    where the mutual information :math:`I(X_i ; X_j)` is evaluated in :meth:`qnetti.qubit_mutual_infos`
+
+    :param prep_node: a network node that prepares the quantum state to evaluate
+    :type prep_node: qnetvo.PrepareNode
+
+    :param meas_wires: The qubit wires to measure in the network. If ``None`` all wires are measured.
+    :type meas_wires: list[int]
 
     :param dev_kwargs: Keyword arguments passed to the PennyLane device constructor.
     :type dev_kwargs: dict
+
+    :param qnode_kwargs: Keyword arguments passed to the PennyLane qnode constructor.
+    :type qnode_kwargs: dict
+
+    :returns: A function ``mutual_info_cost(settings)`` that evaluates the specified cost function.
+    :rtype: qml.QNode
     """
 
     probs_qnode = qubit_probs_qnode_fn(
         prep_node, meas_wires=meas_wires, dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
     )
 
-    def mutual_info_cost(meas_settings):
-        probs_vec = probs_qnode(meas_settings)
+    def mutual_info_cost(settings):
+        probs_vec = probs_qnode(settings)
         mutual_infos = qubit_mutual_infos(probs_vec)
         return -sum(mutual_infos)
 
@@ -131,18 +175,25 @@ def mutual_info_cost_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kwargs=
 
 
 def qubit_characteristic_matrix_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kwargs={}):
-    """
-    Given the preparation nodes, return a function that evaluates the characteristic matrix from two sets of settings,
+    """Given the preparation nodes, return a function that evaluates the characteristic matrix from two sets of settings,
     one for the Shannon entropies representing the diagonal elements, the other for the mutual information represeting
     the off-diagonal elements
+
     :param prep_node: a network node that prepares the quantum state to evaluate
     :type prep_node: qnetvo.PrepareNode
+
+    :param meas_wires: The qubit wires to measure in the network. If ``None`` all wires are measured.
+    :type meas_wires: list[int]
 
     :param dev_kwargs: Keyword arguments passed to the PennyLane device constructor.
     :type dev_kwargs: dict
 
     :param qnode_kwargs: Keyword arguments passed to the PennyLane qnode constructor.
     :type qnode_kwargs: dict
+
+    :returns: A function ``characteristic_matrix(vn_entropy_settings, mutual_info_settings)`` where the
+              parameters are the qubit measurement settings for the von Neumann entropy and mutual information.
+    :rtype: function
     """
 
     probs_qnode = qubit_probs_qnode_fn(
@@ -182,6 +233,36 @@ def optimize_vn_entropy(
     num_steps=10,
     verbose=False,
 ):
+    """Optimizes the network's arbitrary qubit measurements to minimize the :meth:`qnetti.shannon_entropy_cost_fn`.
+    The minimum Shannon entropy corresponds to the von Neumann entropy.
+
+    The optimization is performed using the :meth:`qnetti.optimize` method where
+
+    :param prep_node: A network node that prepares the quantum state to evaluate.
+    :type prep_node: qnetvo.PrepareNode
+
+    :param meas_wires: The wires to measure when evaluating the covariance matrix. If ``meas_wires`` are not specified,
+                       all wires in the prepare node are considered. This can be used to ignore ancillary qubits.
+    :type meas_wires: list[int]
+
+    :param dev_kwargs: Keyword arguments passed to the PennyLane device constructor.
+    :type dev_kwargs: dict
+
+    :param qnode_kwargs: Keyword arguments passed to the PennyLane qnode constructor.
+    :type qnode_kwargs: dict
+
+    :param step_size: The step to take in the direction of steepest descent. Default ``step_size=0.1``.
+    :type step_size: float
+
+    :param num_steps: The number of iterations of gradient descent to perform. Default ``num_steps=20``.
+    :type num_steps: int
+
+    :param verbose: If ``True``, the iteration step and cost will be printed every 5 iterations.
+    :type verbose: bool
+
+    :returns: The dictionary returned from :meth:`qnetti.optimize`
+    :rtype: dict
+    """
     num_wires = len(meas_wires if meas_wires else prep_node.wires)
 
     init_settings = 2 * qnp.pi * qnp.random.rand(3 * num_wires, requires_grad=True)
@@ -207,6 +288,34 @@ def optimize_mutual_info(
     num_steps=10,
     verbose=False,
 ):
+    """Optimizes the network's arbitrary qubit measurements to minimize the :meth:`qnetti.mutual_info_cost_fn`.
+    See the :meth:`qnetti.optimize` method for details regarding the gradient optimization.
+
+    :param prep_node: A network node that prepares the quantum state to evaluate.
+    :type prep_node: qnetvo.PrepareNode
+
+    :param meas_wires: The wires to measure when evaluating the covariance matrix. If ``meas_wires`` are not specified,
+                       all wires in the prepare node are considered. This can be used to ignore ancillary qubits.
+    :type meas_wires: list[int]
+
+    :param dev_kwargs: Keyword arguments passed to the PennyLane device constructor.
+    :type dev_kwargs: dict
+
+    :param qnode_kwargs: Keyword arguments passed to the PennyLane qnode constructor.
+    :type qnode_kwargs: dict
+
+    :param step_size: The step to take in the direction of steepest descent. Default ``step_size=0.1``.
+    :type step_size: float
+
+    :param num_steps: The number of iterations of gradient descent to perform. Default ``num_steps=20``.
+    :type num_steps: int
+
+    :param verbose: If ``True``, the iteration step and cost will be printed every 5 iterations.
+    :type verbose: bool
+
+    :returns: The dictionary returned from :meth:`qnetti.optimize`
+    :rtype: dict
+    """
     num_wires = len(meas_wires if meas_wires else prep_node.wires)
 
     init_settings = 2 * qnp.pi * qnp.random.rand(3 * num_wires, requires_grad=True)
@@ -229,6 +338,43 @@ def optimize_characteristic_matrix(
     mi_opt_kwargs={},
     vn_opt_kwargs={},
 ):
+    """Obtains the qubit characteristic matrix for a given multi-qubit state preparation.
+
+    Mathematically, the qubit characteristic matrix is a real-valued matrix :math:`Q \\in \\mathbb{R}^{n \times n}`,
+    :math:`n` being the number of qubits in a network. On the diagonal, :math:`Q` stores the von Neumann entropy of
+    the respective qubit, i.e. for any :math:`i \\in [n]`, :math:`Q_{ii} = S(q_i)`. On the other hand, off-diagonal
+    entries stores the measured mutual information between qubits: :math:`Q_{ij} = I_m(q_i;q_j)` for :math:`i \neq j`.
+    For further details, see https://arxiv.org/abs/2212.07987.
+
+    This function uses the :meth:`qnetti.optimize_vn_entropy` and :meth:`qnetti.optimize_mutual_info` methods to
+    find the optimal measurement settinggs for inferring the network's topology.
+
+    :param prep_node: A network node that prepares the quantum state to evaluate.
+    :type prep_node: qnetvo.PrepareNode
+
+    :param meas_wires: The wires to measure when evaluating the covariance matrix. If ``meas_wires`` are not specified,
+                       all wires in the prepare node are considered. This can be used to ignore ancillary qubits.
+    :type meas_wires: list[int]
+
+    :param dev_kwargs: Keyword arguments passed to the PennyLane device constructor.
+    :type dev_kwargs: dict
+
+    :param qnode_kwargs: Keyword arguments passed to the PennyLane qnode constructor.
+    :type qnode_kwargs: dict
+
+    :param step_size: The step to take in the direction of steepest descent. Default ``step_size=0.1``.
+    :type step_size: float
+
+    :param num_steps: The number of iterations of gradient descent to perform. Default ``num_steps=20``.
+    :type num_steps: int
+
+    :param verbose: If ``True``, the iteration step and cost will be printed every 5 iterations.
+    :type verbose: bool
+
+    :returns: A tuple containing the characteristic matrix, the mutual information optimizaation resullts,
+              and the von Neumann entropy optimization results.
+    :rtype: tuple[matrix, dict, dict]
+    """
     opt_mi_dict = optimize_mutual_info(
         prep_node,
         **cost_kwargs,
