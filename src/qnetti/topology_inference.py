@@ -200,7 +200,7 @@ def qubit_characteristic_matrix(
         for q in range(num_qubits)
     ]
     ansatz = qnetvo.NetworkAnsatz([prepare_node], meas_nodes, dev_kwargs=device)
-    cost = qubit_measured_mutual_info_cost_fn(ansatz, **qnode_kwargs)
+    cost = measured_mutual_info_cost_fn(ansatz, **qnode_kwargs)
     settings = ansatz.rand_network_settings()
     dict = qnetvo.gradient_descent(
         cost,
@@ -212,7 +212,7 @@ def qubit_characteristic_matrix(
     )
     off_diag_settings = dict["opt_settings"]
 
-    characteristic_matrix = qubit_shannon_entropy(prep_node=prepare_node)(
+    characteristic_matrix = evaluate_qubit_char_mat(prep_node=prepare_node, shots=shots)(
         diag_settings, off_diag_settings
     )
     return characteristic_matrix
