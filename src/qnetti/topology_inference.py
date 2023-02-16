@@ -169,7 +169,7 @@ def qubit_characteristic_matrix(
     if shots is None:
         device = {}
     else:
-        device = {"name": "default.qubit", "shots": shots}
+        device = {"name": "default.mixed", "shots": shots}
 
     characteristic_matrix = np.zeros(shape=[num_qubits, num_qubits])
     meas_nodes = [
