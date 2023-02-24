@@ -3,76 +3,76 @@ import pennylane as qml
 import pennylane.numpy as np
 
 
-def measured_mutual_info_cost_fn(ansatz, **qnode_kwargs):
-    """Constructs an ansatz-specific measured mutual information cost function.
+# def measured_mutual_info_cost_fn(ansatz, **qnode_kwargs):
+#     """Constructs an ansatz-specific measured mutual information cost function.
 
-    In the context of quantum networks, the measured mutual information seeks to quantify the correlation between
-    measurement statistics of a pair of measurement devices, where measurements are performed locally on each
-    device.
+#     In the context of quantum networks, the measured mutual information seeks to quantify the correlation between
+#     measurement statistics of a pair of measurement devices, where measurements are performed locally on each
+#     device.
 
-    Formally, let :math:`X` and :math:`Y` be random variables representing measurement outcomes of two measurement
-    devices in the network, where projective measurements :math:`\\{\\Pi^X\\}` and :math:`\\{\\Pi^Y\\}` are
-    performed on respective devices. Then, the measured mutual information seeks to find the measurement bases
-    that maximize the mutual information between :math:`X` and :math:`Y`:
+#     Formally, let :math:`X` and :math:`Y` be random variables representing measurement outcomes of two measurement
+#     devices in the network, where projective measurements :math:`\\{\\Pi^X\\}` and :math:`\\{\\Pi^Y\\}` are
+#     performed on respective devices. Then, the measured mutual information seeks to find the measurement bases
+#     that maximize the mutual information between :math:`X` and :math:`Y`:
 
-    .. math::
+#     .. math::
 
-            I_m (X;Y) = \\max_{\\{\\Pi^X\\}, \\{\\Pi^X\\}} H(X) + H(Y) - H(XY)
+#             I_m (X;Y) = \\max_{\\{\\Pi^X\\}, \\{\\Pi^X\\}} H(X) + H(Y) - H(XY)
 
-    where :math:`H(\cdot)` denotes the Shannon entropy.
+#     where :math:`H(\cdot)` denotes the Shannon entropy.
 
-    :param ansatz: The ansatz circuit on which the measured mutual information is evaluated. The ansatz is limited
-                   to having two measurement nodes.
-    :type ansatz: qnetvo.Network Ansatz
+#     :param ansatz: The ansatz circuit on which the measured mutual information is evaluated. The ansatz is limited
+#                    to having two measurement nodes.
+#     :type ansatz: qnetvo.Network Ansatz
 
-    :param qnode_kwargs: Keyword arguments passed to execute qnodes.
-    :type qnode_kwargs: dictionary
+#     :param qnode_kwargs: Keyword arguments passed to execute qnodes.
+#     :type qnode_kwargs: dictionary
 
-    :return: A cost function ``measured_mutual_info_cost(*network_settings)`` parameterized by the ansatz-specific
-             scenario settings.
-    :rtype: Function
+#     :return: A cost function ``measured_mutual_info_cost(*network_settings)`` parameterized by the ansatz-specific
+#              scenario settings.
+#     :rtype: Function
 
-    """
-    num_prep_nodes = len(ansatz.layers[0])
-    num_meas_nodes = len(ansatz.layers[-1])
-    num_qubits = len(ansatz.layers_wires[-1])
+#     """
+#     num_prep_nodes = len(ansatz.layers[0])
+#     num_meas_nodes = len(ansatz.layers[-1])
+#     num_qubits = len(ansatz.layers_wires[-1])
 
-    probs_qnode = qnetvo.joint_probs_qnode(ansatz, **qnode_kwargs)
+#     probs_qnode = qnetvo.joint_probs_qnode(ansatz, **qnode_kwargs)
 
-    def cost(*network_settings):
-        settings = ansatz.qnode_settings(
-            network_settings, [[0] * num_prep_nodes, [0] * num_meas_nodes]
-        )
-        probs_vec = probs_qnode(settings)
+#     def cost(*network_settings):
+#         settings = ansatz.qnode_settings(
+#             network_settings, [[0] * num_prep_nodes, [0] * num_meas_nodes]
+#         )
+#         probs_vec = probs_qnode(settings)
 
-        probs_tensor = probs_vec.reshape((2,) * (num_qubits))
-        tensor_indices = "".join(chr(97 + q) for q in range(num_qubits))
+#         probs_tensor = probs_vec.reshape((2,) * (num_qubits))
+#         tensor_indices = "".join(chr(97 + q) for q in range(num_qubits))
 
-        mutual_info_sum = 0
-        for q1 in range(num_qubits):
-            for q2 in range(q1 + 1, num_qubits):
-                q1_index = chr(97 + q1)
-                q2_index = chr(97 + q2)
+#         mutual_info_sum = 0
+#         for q1 in range(num_qubits):
+#             for q2 in range(q1 + 1, num_qubits):
+#                 q1_index = chr(97 + q1)
+#                 q2_index = chr(97 + q2)
 
-                HX = qnetvo.shannon_entropy(
-                    np.einsum(tensor_indices + "->" + q1_index, probs_tensor)
-                )
+#                 HX = qnetvo.shannon_entropy(
+#                     np.einsum(tensor_indices + "->" + q1_index, probs_tensor)
+#                 )
 
-                HY = qnetvo.shannon_entropy(
-                    np.einsum(tensor_indices + "->" + q2_index, probs_tensor)
-                )
+#                 HY = qnetvo.shannon_entropy(
+#                     np.einsum(tensor_indices + "->" + q2_index, probs_tensor)
+#                 )
 
-                HXY = qnetvo.shannon_entropy(
-                    np.einsum(tensor_indices + "->" + q1_index + q2_index, probs_tensor).reshape(
-                        (4)
-                    )
-                )
+#                 HXY = qnetvo.shannon_entropy(
+#                     np.einsum(tensor_indices + "->" + q1_index + q2_index, probs_tensor).reshape(
+#                         (4)
+#                     )
+#                 )
 
-                mutual_info_sum += HX + HY - HXY
+#                 mutual_info_sum += HX + HY - HXY
 
-        return -mutual_info_sum
+#         return -mutual_info_sum
 
-    return cost
+#     return cost
 
 
 def evaluate_qubit_char_mat(prep_node, shots=None, qnode_kwargs={}):

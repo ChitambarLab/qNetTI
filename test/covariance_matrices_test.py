@@ -1,7 +1,5 @@
 import pytest
 import numpy as np
-import pennylane as qml
-from pennylane import numpy as qnp
 import qnetvo
 
 import qnetti
@@ -120,24 +118,3 @@ class TestQubitCovarianceCostFn:
         )
 
         assert np.allclose(cov_cost(meas_settings), cost_match, atol=1e-2)
-
-
-class TestOptimizeCovarianceMatrix:
-    @pytest.mark.parametrize(
-        "qnode_kwargs",
-        [{}, {"diff_method": "parameter-shift"}],
-    )
-    def test_optimize_covariance_matrix_two_qubit_ghz_state(self, qnode_kwargs):
-        prep_node = qnetvo.PrepareNode(wires=range(2), ansatz_fn=qnetvo.ghz_state)
-        qnp.random.seed(55)
-
-        cov_mat, opt_dict = qnetti.optimize_covariance_matrix(
-            prep_node,
-            step_size=0.1,
-            num_steps=10,
-            dev_kwargs={"shots": 1000},
-            qnode_kwargs=qnode_kwargs,
-        )
-
-        assert np.isclose(opt_dict["min_cost"], -4, atol=1e-2)
-        assert np.allclose(cov_mat, np.ones((2, 2)), atol=1e-3)

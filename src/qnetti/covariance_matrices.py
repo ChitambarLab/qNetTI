@@ -141,6 +141,7 @@ def optimize_covariance_matrix(
     """
     num_wires = len(meas_wires if meas_wires else prep_node.wires)
     init_settings = 2 * qnp.pi * qnp.random.rand(3 * num_wires, requires_grad=True)
+
     cov_cost = qubit_covariance_cost_fn(
         prep_node, meas_wires=meas_wires, dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
     )

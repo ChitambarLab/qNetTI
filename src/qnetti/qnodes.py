@@ -27,9 +27,10 @@ def qubit_probs_qnode_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kwargs
 
     meas_wires = meas_wires if meas_wires else prep_node.wires
 
-    dev_name = dev_kwargs.pop("name", "default.qubit")
+    dev_kwargs_copy = dev_kwargs.copy()
+    dev_name = dev_kwargs_copy.pop("name", "default.qubit")
 
-    dev = qml.device(dev_name, wires=prep_node.wires, **dev_kwargs)
+    dev = qml.device(dev_name, wires=prep_node.wires, **dev_kwargs_copy)
 
     @qml.qnode(dev, **qnode_kwargs)
     def qubit_probs_qnode(settings):
