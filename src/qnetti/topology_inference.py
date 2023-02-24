@@ -167,7 +167,7 @@ def qubit_characteristic_matrix(
 
     num_qubits = max([qubit for qubit in prepare_node.wires]) + 1
     if shots is None:
-        device = {}
+        device = {"name": "default.mixed"}
     else:
         device = {"name": "default.mixed", "shots": shots}
 
