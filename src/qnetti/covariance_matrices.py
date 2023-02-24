@@ -48,7 +48,7 @@ def qubit_covariance_matrix_fn(prep_node, meas_wires=None, shots=None, qnode_kwa
     """
     wires = meas_wires if meas_wires else prep_node.wires
 
-    dev = qml.device("default.qubit", wires=prep_node.wires, shots=shots)
+    dev = qml.device("default.mixed", wires=prep_node.wires, shots=shots)
 
     @qml.qnode(dev, **qnode_kwargs)
     def circ(settings):
