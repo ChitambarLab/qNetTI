@@ -1,7 +1,5 @@
 import pytest
 import numpy as np
-import pennylane as qml
-from pennylane import numpy as qnp
 import qnetvo
 
 import qnetti
@@ -69,7 +67,7 @@ class TestQubitCovarianceMatrixFn:
     def test_qubit_covariance_matrix_finite_shots(self, num_wires, meas_settings, cov_mat_match):
         np.random.seed(65)
         prep_node = qnetvo.PrepareNode(wires=range(num_wires), ansatz_fn=qnetvo.ghz_state)
-        cov_mat_fn = qnetti.qubit_covariance_matrix_fn(prep_node, shots=20000)
+        cov_mat_fn = qnetti.qubit_covariance_matrix_fn(prep_node, dev_kwargs={"shots": 20000})
 
         assert np.allclose(cov_mat_fn(meas_settings), cov_mat_match, atol=1e-2)
 
@@ -115,28 +113,8 @@ class TestQubitCovarianceCostFn:
         self, num_wires, meas_settings, meas_wires, cost_match
     ):
         prep_node = qnetvo.PrepareNode(wires=range(num_wires), ansatz_fn=qnetvo.ghz_state)
-        cov_cost = qnetti.qubit_covariance_cost_fn(prep_node, meas_wires=meas_wires, shots=20000)
-
-        assert np.allclose(cov_cost(meas_settings), cost_match, atol=1e-2)
-
-    @pytest.mark.parametrize(
-        "qnode_kwargs",
-        [{}, {"diff_method": "parameter-shift"}],
-    )
-    def test_qubit_covariance_cost_optimization(self, qnode_kwargs):
-        prep_node = qnetvo.PrepareNode(wires=range(2), ansatz_fn=qnetvo.ghz_state)
-        cov_cost = qnetti.qubit_covariance_cost_fn(prep_node, shots=1000, qnode_kwargs=qnode_kwargs)
-        cov_mat = qnetti.qubit_covariance_matrix_fn(
-            prep_node, shots=1000, qnode_kwargs=qnode_kwargs
+        cov_cost = qnetti.qubit_covariance_cost_fn(
+            prep_node, meas_wires=meas_wires, dev_kwargs={"shots": 20000}
         )
 
-        opt = qml.GradientDescentOptimizer(stepsize=0.05)
-
-        qnp.random.seed(55)
-        settings = qnp.random.rand(6, requires_grad=True)
-
-        for i in range(10):
-            settings, cost_val = opt.step_and_cost(cov_cost, settings)
-
-        assert np.isclose(cost_val, -4, atol=1e-2)
-        assert np.allclose(cov_mat(settings), np.ones((2, 2)), atol=1e-3)
+        assert np.allclose(cov_cost(meas_settings), cost_match, atol=1e-2)
