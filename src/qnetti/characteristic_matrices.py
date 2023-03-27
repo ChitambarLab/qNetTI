@@ -123,7 +123,7 @@ def qubit_measured_mutual_infos_fn(prep_node, meas_wires=None, dev_kwargs={}, qn
     probs_qnodes = []
     for q1 in wires:
         for q2 in wires[q1 + 1 :]:
-            probs_qnode = qubit_probs_qnode_fn(
+            probs_qnode, dev = qubit_probs_qnode_fn(
                 prep_node, meas_wires=[q1, q2], dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
             )
             probs_qnodes += [probs_qnode]
@@ -167,7 +167,7 @@ def shannon_entropy_cost_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kwa
     :rtype: qml.QNode
     """
 
-    probs_qnode = qubit_probs_qnode_fn(
+    probs_qnode, dev = qubit_probs_qnode_fn(
         prep_node, meas_wires=meas_wires, dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
     )
 
@@ -208,7 +208,7 @@ def mutual_info_cost_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kwargs=
     :rtype: qml.QNode
     """
 
-    probs_qnode = qubit_probs_qnode_fn(
+    probs_qnode, dev = qubit_probs_qnode_fn(
         prep_node, meas_wires=meas_wires, dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
     )
 
@@ -298,7 +298,7 @@ def qubit_characteristic_matrix_fn(
     :rtype: function
     """
 
-    probs_qnode = qubit_probs_qnode_fn(
+    probs_qnode, dev = qubit_probs_qnode_fn(
         prep_node, meas_wires=meas_wires, dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
     )
 

@@ -20,9 +20,10 @@ def qubit_probs_qnode_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kwargs
     :param qnode_kwargs: Keyword arguments passed through to the PennyLane qnode decorator.
     :type qnode_kwargs: dict
 
-    :returns: A qnode function that returns the qubit probabilities for the circuit.
+    :returns: A qnode function that returns the qubit probabilities for the circuit and the device
+              that evaluates the qnode.
               The function is called as ``qnode(settings)`` where ``len(settings) == 3 * num_wires``.
-    :rtype: qml.QNode
+    :rtype: tuple(qml.QNode, qml.Device)
     """
 
     meas_wires = meas_wires if meas_wires else prep_node.wires
@@ -40,4 +41,4 @@ def qubit_probs_qnode_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kwargs
 
         return qml.probs(wires=meas_wires)
 
-    return qubit_probs_qnode
+    return qubit_probs_qnode, dev

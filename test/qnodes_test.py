@@ -50,8 +50,9 @@ import qnetti
     ],
 )
 def test_qubit_probs_qnode_fn(prep_node, meas_wires, dev_kwargs, settings, probs_match):
-    probs_qnode = qnetti.qubit_probs_qnode_fn(
+    probs_qnode, dev = qnetti.qubit_probs_qnode_fn(
         prep_node, meas_wires=meas_wires, dev_kwargs=dev_kwargs
     )
 
     assert np.allclose(probs_qnode(settings), probs_match)
+    assert dev.short_name == dev_kwargs["name"] if "name" in dev_kwargs else "default.qubit"
