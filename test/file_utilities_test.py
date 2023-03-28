@@ -80,4 +80,3 @@ def test_read_write_json(tmp_dir_cleanup, json_dict):
     read_json_dict = qnetti.read_json(tmp_dir + filename + ".json")
 
     assert read_json_dict == json_dict
-

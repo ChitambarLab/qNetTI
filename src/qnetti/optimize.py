@@ -4,6 +4,7 @@ import time
 
 from .file_utilities import datetime_now_string, tmp_dir, write_json
 
+
 def optimize(
     cost,
     settings,
@@ -94,7 +95,7 @@ def optimize(
             if verbose:
                 print("iteration : ", i)
                 print("cost val : ", cost_val)
-            
+
             opt_dict["opt_step_times"] += [time.time() - curr_time]
     except BaseException as err:
         msg_template = (
@@ -102,7 +103,7 @@ def optimize(
         )
         message = msg_template.format(type(err).__name__, str(i), err.args)
         print(message)
-    
+
         if filename:
             tmp_path = tmp_dir(filepath)
             write_json(opt_dict, tmp_path + filename)
@@ -115,7 +116,5 @@ def optimize(
 
         if filename:
             write_json(opt_dict, filepath + filename)
-
-        
 
     return opt_dict

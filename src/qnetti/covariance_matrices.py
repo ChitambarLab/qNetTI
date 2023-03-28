@@ -103,9 +103,7 @@ def optimize_covariance_matrix(
     meas_wires=None,
     dev_kwargs={},
     qnode_kwargs={},
-    step_size=0.1,
-    num_steps=10,
-    verbose=False,
+    **opt_kwargs,
 ):
     """Optimizes the arbitrary qubit measurements to maximize the distance between
     the covariance matrix and the origin.
@@ -147,7 +145,9 @@ def optimize_covariance_matrix(
     )
 
     opt_dict = optimize(
-        cov_cost, init_settings, step_size=step_size, num_steps=num_steps, verbose=verbose
+        cov_cost,
+        init_settings,
+        **opt_kwargs,
     )
 
     cov_mat_fn = qubit_covariance_matrix_fn(
