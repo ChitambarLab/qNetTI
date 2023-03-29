@@ -55,6 +55,7 @@ for shots in shots_list:
     opt_kwargs = {
         "num_steps": 15,
         "step_size": 0.1,
+        "filepath": shots_filepath,
     }
 
     datetime_str = qnetti.datetime_now_string()
@@ -66,7 +67,6 @@ for shots in shots_list:
         qnode_kwargs=qnode_kwargs,
         mi_opt_kwargs=opt_kwargs,
         vn_opt_kwargs=opt_kwargs,
-        filepath=shots_filepath,
     )
 
     qnetti.write_json(
