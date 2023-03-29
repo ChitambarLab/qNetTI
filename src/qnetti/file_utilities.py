@@ -16,6 +16,14 @@ def tmp_dir(filepath):
     return tmp_path
 
 
+def mkdir(filepath, dir_name):
+    dir_path = filepath + dir_name
+    if not os.path.isdir(dir_path):
+        os.mkdir(dir_path)
+
+    return dir_path
+
+
 def get_files(path, regex):
     """Retrieves all data files that match the ``regex`` in the
     directory specified by ``path``.

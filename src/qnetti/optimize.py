@@ -64,6 +64,8 @@ def optimize(
     * ``"opt_step_time"`` - ``float``, The time needed to make each optimization step.
     """
 
+    datetime_now_str = datetime_now_string()
+
     opt_dict = (
         init_opt_dict
         if init_opt_dict
@@ -74,7 +76,7 @@ def optimize(
             "opt_step_times": [],
             "opt_settings": [],
             "min_cost": None,
-            "datetime": datetime_now_string(),
+            "datetime": datetime_now_str,
             **meta_opt_kwargs,
         }
     )
@@ -104,17 +106,13 @@ def optimize(
         message = msg_template.format(type(err).__name__, str(i), err.args)
         print(message)
 
-        if filename:
-            tmp_path = tmp_dir(filepath)
-            write_json(opt_dict, tmp_path + filename)
+        tmp_path = tmp_dir(filepath)
+        write_json(opt_dict, tmp_path + filename + datetime_now_str)
     else:
         opt_dict["cost_vals"] += [float(cost(settings))]
 
         min_id = qml.math.argmin(opt_dict["cost_vals"])
         opt_dict["opt_settings"] = opt_dict["settings_list"][min_id]
         opt_dict["min_cost"] = opt_dict["cost_vals"][min_id]
-
-        if filename:
-            write_json(opt_dict, filepath + filename)
 
     return opt_dict
