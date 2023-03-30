@@ -57,7 +57,7 @@ for shots in shots_list:
         dev_kwargs=dev_kwargs,
         meas_wires=wires,
         qnode_kwargs=qnode_kwargs,
-        num_steps=15,
+        num_steps=20,
         step_size=0.1,
         filepath=shots_filepath,
     )

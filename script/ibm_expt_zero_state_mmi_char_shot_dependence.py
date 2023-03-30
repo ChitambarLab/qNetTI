@@ -52,8 +52,14 @@ for shots in shots_list:
     shots_filepath = qnetti.mkdir(filepath, "shots_" + str(shots) + "/")
     dev_kwargs["shots"] = shots
 
-    opt_kwargs = {
-        "num_steps": 15,
+    mi_opt_kwargs = {
+        "num_steps": 10,
+        "step_size": 0.1,
+        "filepath": shots_filepath,
+    }
+
+    vn_opt_kwargs = {
+        "num_steps": 20,
         "step_size": 0.1,
         "filepath": shots_filepath,
     }
@@ -65,8 +71,8 @@ for shots in shots_list:
         use_measured_mutual_info=True,
         meas_wires=wires,
         qnode_kwargs=qnode_kwargs,
-        mi_opt_kwargs=opt_kwargs,
-        vn_opt_kwargs=opt_kwargs,
+        mi_opt_kwargs=mi_opt_kwargs,
+        vn_opt_kwargs=vn_opt_kwargs,
     )
 
     qnetti.write_json(
