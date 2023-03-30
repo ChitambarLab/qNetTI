@@ -69,7 +69,7 @@ for shots in shots_list:
         {
             "cov_mat": cov_mat.tolist(),
             "opt_dict": cov_opt_dict,
-            "ibm_device": ibm_device,
+            "ibm_device": ibm_device_name,
             "num_qubits": num_qubits,
         },
         shots_filepath + ibm_device_name + "_cov_mat_" + datetime_str,

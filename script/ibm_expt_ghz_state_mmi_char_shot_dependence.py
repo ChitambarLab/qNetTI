@@ -74,7 +74,7 @@ for shots in shots_list:
             "char_mat": char_mat.tolist(),
             "mmi_opt_dict": mi_opt_dict,
             "vn_opt_dict": vn_opt_dict,
-            "ibm_device": ibm_device,
+            "ibm_device": ibm_device_name,
             "num_qubits": num_qubits,
         },
         shots_filepath + ibm_device_name + "_char_mat_" + datetime_str,
