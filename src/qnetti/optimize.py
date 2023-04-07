@@ -14,6 +14,7 @@ def optimize(
     init_opt_dict=None,
     filepath="./",
     filename="",
+    step_only=False,
     **meta_opt_kwargs,
 ):
     """Minimizes the ``cost`` function and find the optimal settings.
@@ -48,6 +49,9 @@ def optimize(
                           The optimization will continue from the provided dictionary.
     :type init_opt_dict: dictionary
 
+    :param step_only: If ``True``, the cost is not evaluated. Default ``False``.
+    :type step_only: bool
+
     :param meta_opt_kwargs: Generic keyword arguments to write the optimization dictionary.
     :type meta_opt_kwargs: keyword arguments
 
@@ -74,30 +78,36 @@ def optimize(
             "cost_vals": [],
             "step_size": step_size,
             "opt_step_times": [],
-            "opt_settings": [],
+            "opt_settings": None,
             "min_cost": None,
             "datetime": datetime_now_str,
+            "step_only": step_only,
             **meta_opt_kwargs,
         }
     )
 
     opt = qml.GradientDescentOptimizer(stepsize=step_size)
 
-    current_step = len(opt_dict["cost_vals"])
+    current_step = len(opt_dict["settings_list"]) - 1
     settings = qnp.array(opt_dict["settings_list"][-1], requires_grad=True)
 
     try:
         for i in range(current_step, num_steps):
             curr_time = time.time()
-            settings, cost_val = opt.step_and_cost(cost, settings)
-
-            opt_dict["cost_vals"] += [float(cost_val)]
-            opt_dict["settings_list"] += [settings.tolist()]
 
             if verbose:
                 print("iteration : ", i)
-                print("cost val : ", cost_val)
 
+            if step_only:
+                settings = opt.step(cost, settings)
+            else:
+                settings, cost_val = opt.step_and_cost(cost, settings)
+                opt_dict["cost_vals"] += [float(cost_val)]
+
+                if verbose:
+                    print("cost val : ", cost_val)
+
+            opt_dict["settings_list"] += [settings.tolist()]
             opt_dict["opt_step_times"] += [time.time() - curr_time]
     except BaseException as err:
         msg_template = (
@@ -109,10 +119,12 @@ def optimize(
         tmp_path = tmp_dir(filepath)
         write_json(opt_dict, tmp_path + filename + datetime_now_str)
     else:
-        opt_dict["cost_vals"] += [float(cost(settings))]
-
-        min_id = qml.math.argmin(opt_dict["cost_vals"])
-        opt_dict["opt_settings"] = opt_dict["settings_list"][min_id]
-        opt_dict["min_cost"] = opt_dict["cost_vals"][min_id]
+        if not step_only:
+            opt_dict["cost_vals"] += [float(cost(settings))]
+            min_id = qml.math.argmin(opt_dict["cost_vals"])
+            opt_dict["opt_settings"] = opt_dict["settings_list"][min_id]
+            opt_dict["min_cost"] = opt_dict["cost_vals"][min_id]
+        else:
+            opt_dict["opt_settings"] = opt_dict["settings_list"][-1]
 
     return opt_dict
