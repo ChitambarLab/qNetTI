@@ -1,6 +1,7 @@
 from matplotlib import pyplot as plt
 from functools import reduce
 import numpy as np
+import math
 
 from .file_utilities import *
 
@@ -35,14 +36,14 @@ def plot_ibm_network_inference(
 
         cov_mats_data = [
             [
-                np.abs(cov_mat_match - np.abs(np.array(data_jsons[i]["cov_mats"][j])))
-                for i in range(num_trials)
+                np.abs(cov_mat_match - np.abs(np.array(data_jsons[k]["cov_mats"][j])))
+                for k in range(num_trials)
             ]
             for j in range(num_iterations)
         ]
 
         # mean and min distance from optimal covariance matrix
-        mean_cov_mats_data = [sum(cov_mats_data[i]) / num_trials for i in range(num_iterations)]
+        mean_cov_mats_data = [sum(cov_mats_data[k]) / num_trials for k in range(num_iterations)]
         min_cov_mats_data = [
             reduce(lambda x_mat, y_mat: np.minimum(x_mat, y_mat), cov_mats)
             for cov_mats in cov_mats_data
@@ -61,6 +62,21 @@ def plot_ibm_network_inference(
             ]
         )
 
+        mean_cov_dist_std_err = []
+        mean_cov_dists = []
+        for j in range(num_iterations):
+            data_list = []
+            for k in range(num_trials):
+                for q1 in range(num_qubits):
+                    for q2 in range(q1, num_qubits):
+                        data_list += [cov_mats_data[j][k][q1, q2]]
+
+            mean_cov_dist_std_err += [np.std(data_list) / np.sqrt(len(data_list))]
+            mean_cov_dists += [sum(data_list) / len(data_list)]
+
+        mean_cov_dists = np.array(mean_cov_dists)
+        mean_cov_dist_std_err = np.array(mean_cov_dist_std_err)
+
         mean_min_std_err = np.array(
             [np.std(min_cov_mat) / np.sqrt(25) for min_cov_mat in min_cov_mats_data]
         )
@@ -70,15 +86,18 @@ def plot_ibm_network_inference(
 
         ax1.semilogy(
             range(num_iterations),
-            mean_qubit_distances,
+            # mean_qubit_distances,
+            mean_cov_dists,
             label="shots " + str(shots),
             color=_COLORS[i],
             alpha=3 / 4,
         )
         ax1.fill_between(
             range(num_iterations),
-            mean_qubit_distances - mean_dist_std_err,
-            mean_qubit_distances + mean_dist_std_err,
+            # mean_qubit_distances - mean_dist_std_err,
+            # mean_qubit_distances + mean_dist_std_err,
+            mean_cov_dists - mean_cov_dist_std_err,
+            mean_cov_dists + mean_cov_dist_std_err,
             alpha=1 / 4,
             color=_COLORS[i],
         )
@@ -103,11 +122,11 @@ def plot_ibm_network_inference(
         """
         vn_ent_match = np.diag(mi_char_mat_match)
         vn_ents_data = [
-            [np.abs(vn_ent_match - data_jsons[i]["vn_entropies"][j]) for i in range(num_trials)]
+            [np.abs(vn_ent_match - data_jsons[k]["vn_entropies"][j]) for k in range(num_trials)]
             for j in range(num_iterations)
         ]
 
-        mean_vn_ents_data = [sum(vn_ents_data[i]) / num_trials for i in range(num_iterations)]
+        mean_vn_ents_data = [sum(vn_ents_data[k]) / num_trials for k in range(num_iterations)]
         min_vn_dist_data = [
             reduce(lambda x, y: np.minimum(x, y), vn_ents) for vn_ents in vn_ents_data
         ]
@@ -126,16 +145,30 @@ def plot_ibm_network_inference(
             [np.std(mean_vn_ents) / num_qubits for mean_vn_ents in mean_vn_ents_data]
         )
 
+        mean_vn_dist_std_err = []
+        mean_vn_dists = []
+        for j in range(num_iterations):
+            data_list = []
+            for k in range(num_trials):
+                print(vn_ents_data[j][k])
+                data_list += vn_ents_data[j][k].tolist()
+
+            mean_vn_dist_std_err += [np.std(data_list) / np.sqrt(len(data_list))]
+            mean_vn_dists += [sum(data_list) / len(data_list)]
+
+        mean_vn_dists = np.array(mean_vn_dists)
+        mean_vn_dist_std_err = np.array(mean_vn_dist_std_err)
+
         ax2.semilogy(
             range(num_iterations),
-            mean_vn_qubit_distances,
+            mean_vn_dists,
             color=_COLORS[i],
             alpha=3 / 4,
         )
         ax2.fill_between(
             range(num_iterations),
-            mean_vn_qubit_distances - mean_vn_qubit_distances_std_err,
-            mean_vn_qubit_distances + mean_vn_qubit_distances_std_err,
+            mean_vn_dists - mean_vn_dist_std_err,
+            mean_vn_dists + mean_vn_dist_std_err,
             alpha=1 / 4,
             color=_COLORS[i],
         )
@@ -175,29 +208,54 @@ def plot_ibm_network_inference(
         ]
 
         mean_mi_qubit_distances = np.array(
-            [np.sum(mean_mutual_infos) / num_qubits for mean_mutual_infos in mean_mi_data]
+            [
+                np.sum(mean_mutual_infos) / math.comb(num_qubits, 2)
+                for mean_mutual_infos in mean_mi_data
+            ]
         )
         mean_min_mi_qubit_distances = np.array(
-            [np.sum(min_mutual_infos) / num_qubits for min_mutual_infos in min_mi_data]
+            [
+                np.sum(min_mutual_infos) / math.comb(num_qubits, 2)
+                for min_mutual_infos in min_mi_data
+            ]
         )
 
         min_mi_qubit_distances_std_err = np.array(
-            [np.std(min_mutual_infos) / num_qubits for min_mutual_infos in min_mi_data]
+            [
+                np.std(min_mutual_infos) / math.comb(num_qubits, 2)
+                for min_mutual_infos in min_mi_data
+            ]
         )
         mean_mi_qubit_distances_std_err = np.array(
-            [np.std(mean_mutual_infos) / num_qubits for mean_mutual_infos in mean_mi_data]
+            [
+                np.std(mean_mutual_infos) / math.comb(num_qubits, 2)
+                for mean_mutual_infos in mean_mi_data
+            ]
         )
+
+        mean_mi_dist_std_err = []
+        mean_mi_dists = []
+        for j in range(num_iterations):
+            data_list = []
+            for k in range(num_trials):
+                data_list += mi_data[j][k].tolist()
+
+            mean_mi_dist_std_err += [np.std(data_list) / np.sqrt(len(data_list))]
+            mean_mi_dists += [sum(data_list) / len(data_list)]
+
+        mean_mi_dists = np.array(mean_mi_dists)
+        mean_mi_dist_std_err = np.array(mean_mi_dist_std_err)
 
         ax3.semilogy(
             range(num_iterations),
-            mean_mi_qubit_distances,
+            mean_mi_dists,
             color=_COLORS[i],
             alpha=3 / 4,
         )
         ax3.fill_between(
             range(num_iterations),
-            mean_mi_qubit_distances - mean_mi_qubit_distances_std_err,
-            mean_mi_qubit_distances + mean_mi_qubit_distances_std_err,
+            mean_mi_dists - mean_mi_dist_std_err,
+            mean_mi_dists + mean_mi_dist_std_err,
             alpha=1 / 4,
             color=_COLORS[i],
         )
@@ -240,29 +298,54 @@ def plot_ibm_network_inference(
         ]
 
         mean_mmi_qubit_distances = np.array(
-            [np.sum(mean_mutual_infos) / num_qubits for mean_mutual_infos in mean_mmi_data]
+            [
+                np.sum(mean_mutual_infos) / math.comb(num_qubits, 2)
+                for mean_mutual_infos in mean_mmi_data
+            ]
         )
         mean_min_mmi_qubit_distances = np.array(
-            [np.sum(min_mutual_infos) / num_qubits for min_mutual_infos in min_mmi_data]
+            [
+                np.sum(min_mutual_infos) / math.comb(num_qubits, 2)
+                for min_mutual_infos in min_mmi_data
+            ]
         )
 
         min_mmi_qubit_distances_std_err = np.array(
-            [np.std(min_mutual_infos) / num_qubits for min_mutual_infos in min_mmi_data]
+            [
+                np.std(min_mutual_infos) / math.comb(num_qubits, 2)
+                for min_mutual_infos in min_mmi_data
+            ]
         )
         mean_mmi_qubit_distances_std_err = np.array(
-            [np.std(mean_mutual_infos) / num_qubits for mean_mutual_infos in mean_mmi_data]
+            [
+                np.std(mean_mutual_infos) / math.comb(num_qubits, 2)
+                for mean_mutual_infos in mean_mmi_data
+            ]
         )
+
+        mean_mmi_dist_std_err = []
+        mean_mmi_dists = []
+        for j in range(num_iterations):
+            data_list = []
+            for k in range(num_trials):
+                data_list += mmi_data[j][k].tolist()
+
+            mean_mmi_dist_std_err += [np.std(data_list) / np.sqrt(len(data_list))]
+            mean_mmi_dists += [sum(data_list) / len(data_list)]
+
+        mean_mmi_dists = np.array(mean_mmi_dists)
+        mean_mmi_dist_std_err = np.array(mean_mmi_dist_std_err)
 
         ax4.semilogy(
             range(num_iterations),
-            mean_mmi_qubit_distances,
+            mean_mmi_dists,
             color=_COLORS[i],
             alpha=3 / 4,
         )
         ax4.fill_between(
             range(num_iterations),
-            mean_mmi_qubit_distances - mean_mmi_qubit_distances_std_err,
-            mean_mmi_qubit_distances + mean_mmi_qubit_distances_std_err,
+            mean_mmi_dists - mean_mmi_dist_std_err,
+            mean_mmi_dists + mean_mmi_dist_std_err,
             alpha=1 / 4,
             color=_COLORS[i],
         )
