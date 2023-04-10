@@ -28,7 +28,7 @@ num_qubits = 5
 prep_node = qnetvo.PrepareNode(wires=range(num_qubits), ansatz_fn=qnetvo.ghz_state)
 prep_node_name = "5-qubit_ghz_state"
 
-# init_data_json = qnetti.read_json("data/ibm_inference_5-qubit_ghz_state_shot_dependence/shots_100/tmp/ibmq_qasm_simulator_step_17_2023-04-04T20-09-38Z.json")
+# init_data_json = qnetti.read_json("data/ibm_inference_5-qubit_ghz_state_shot_dependence/shots_10000/tmp/ibmq_qasm_simulator_step_17_2023-04-06T13-03-56Z.json")
 init_data_json = {}
 
 data_jsons = qnetti.infer_ibm_network_shot_dependence(
