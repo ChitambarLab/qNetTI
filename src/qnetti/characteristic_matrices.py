@@ -121,8 +121,8 @@ def qubit_measured_mutual_infos_fn(prep_node, meas_wires=None, dev_kwargs={}, qn
     wires = meas_wires if meas_wires else prep_node.wires
 
     probs_qnodes = []
-    for q1 in wires:
-        for q2 in wires[q1 + 1 :]:
+    for i, q1 in enumerate(wires):
+        for q2 in wires[i + 1 :]:
             probs_qnode, dev = qubit_probs_qnode_fn(
                 prep_node, meas_wires=[q1, q2], dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
             )
@@ -339,9 +339,6 @@ def optimize_vn_entropy(
     dev_kwargs={},
     qnode_kwargs={},
     **opt_kwargs,
-    # step_size=0.1,
-    # num_steps=10,
-    # verbose=False,
 ):
     """Optimizes the network's arbitrary qubit measurements to minimize the :meth:`qnetti.shannon_entropy_cost_fn`.
     The minimum Shannon entropy corresponds to the von Neumann entropy.

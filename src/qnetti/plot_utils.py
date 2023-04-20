@@ -27,23 +27,22 @@ def plot_ibm_network_inference(
         )
         print("filenmaens , ", filenames)
         data_jsons = list(map(read_json, filenames))
-        num_iterations = min([len(data_json["cov_mats"]) for data_json in data_jsons])
         num_trials = len(data_jsons)
 
         """
         plotting covariance matrix data
         """
-
+        num_cov_iterations = min([len(data_json["cov_mats"]) for data_json in data_jsons])
         cov_mats_data = [
             [
                 np.abs(cov_mat_match - np.abs(np.array(data_jsons[k]["cov_mats"][j])))
                 for k in range(num_trials)
             ]
-            for j in range(num_iterations)
+            for j in range(num_cov_iterations)
         ]
 
         # mean and min distance from optimal covariance matrix
-        mean_cov_mats_data = [sum(cov_mats_data[k]) / num_trials for k in range(num_iterations)]
+        mean_cov_mats_data = [sum(cov_mats_data[k]) / num_trials for k in range(num_cov_iterations)]
         min_cov_mats_data = [
             reduce(lambda x_mat, y_mat: np.minimum(x_mat, y_mat), cov_mats)
             for cov_mats in cov_mats_data
@@ -64,7 +63,7 @@ def plot_ibm_network_inference(
 
         mean_cov_dist_std_err = []
         mean_cov_dists = []
-        for j in range(num_iterations):
+        for j in range(num_cov_iterations):
             data_list = []
             for k in range(num_trials):
                 for q1 in range(num_qubits):
@@ -85,7 +84,7 @@ def plot_ibm_network_inference(
         )
 
         ax1.semilogy(
-            range(num_iterations),
+            range(num_cov_iterations),
             # mean_qubit_distances,
             mean_cov_dists,
             label="shots " + str(shots),
@@ -93,7 +92,7 @@ def plot_ibm_network_inference(
             alpha=3 / 4,
         )
         ax1.fill_between(
-            range(num_iterations),
+            range(num_cov_iterations),
             # mean_qubit_distances - mean_dist_std_err,
             # mean_qubit_distances + mean_dist_std_err,
             mean_cov_dists - mean_cov_dist_std_err,
@@ -103,14 +102,14 @@ def plot_ibm_network_inference(
         )
 
         ax1.semilogy(
-            range(num_iterations),
+            range(num_cov_iterations),
             mean_min_qubit_distances,
             linestyle="--",
             color=_COLORS[i],
             alpha=3 / 4,
         )
         ax1.fill_between(
-            range(num_iterations),
+            range(num_cov_iterations),
             mean_min_qubit_distances - mean_min_std_err,
             mean_min_qubit_distances + mean_min_std_err,
             alpha=1 / 4,
@@ -120,13 +119,14 @@ def plot_ibm_network_inference(
         """
         plotting von neumann entropy data
         """
+        num_vn_iterations = min([len(data_json["vn_entropies"]) for data_json in data_jsons])
         vn_ent_match = np.diag(mi_char_mat_match)
         vn_ents_data = [
             [np.abs(vn_ent_match - data_jsons[k]["vn_entropies"][j]) for k in range(num_trials)]
-            for j in range(num_iterations)
+            for j in range(num_vn_iterations)
         ]
 
-        mean_vn_ents_data = [sum(vn_ents_data[k]) / num_trials for k in range(num_iterations)]
+        mean_vn_ents_data = [sum(vn_ents_data[k]) / num_trials for k in range(num_vn_iterations)]
         min_vn_dist_data = [
             reduce(lambda x, y: np.minimum(x, y), vn_ents) for vn_ents in vn_ents_data
         ]
@@ -147,7 +147,7 @@ def plot_ibm_network_inference(
 
         mean_vn_dist_std_err = []
         mean_vn_dists = []
-        for j in range(num_iterations):
+        for j in range(num_vn_iterations):
             data_list = []
             for k in range(num_trials):
                 print(vn_ents_data[j][k])
@@ -160,13 +160,13 @@ def plot_ibm_network_inference(
         mean_vn_dist_std_err = np.array(mean_vn_dist_std_err)
 
         ax2.semilogy(
-            range(num_iterations),
+            range(num_vn_iterations),
             mean_vn_dists,
             color=_COLORS[i],
             alpha=3 / 4,
         )
         ax2.fill_between(
-            range(num_iterations),
+            range(num_vn_iterations),
             mean_vn_dists - mean_vn_dist_std_err,
             mean_vn_dists + mean_vn_dist_std_err,
             alpha=1 / 4,
@@ -174,23 +174,26 @@ def plot_ibm_network_inference(
         )
 
         ax2.semilogy(
-            range(num_iterations),
+            range(num_vn_iterations),
             mean_min_vn_qubit_distances,
             linestyle="--",
             color=_COLORS[i],
             alpha=3 / 4,
         )
         ax2.fill_between(
-            range(num_iterations),
+            range(num_vn_iterations),
             mean_min_vn_qubit_distances - min_vn_qubit_distances_std_err,
             mean_min_vn_qubit_distances + min_vn_qubit_distances_std_err,
             alpha=1 / 4,
             color=_COLORS[i],
         )
+        ax2.set_ylim([0.0001, 1])
 
         """
         plotting classical mutual info entropy data
         """
+        num_mi_iterations = min([len(data_json["mutual_infos"]) for data_json in data_jsons])
+
         mi_match = []
         for q1 in range(num_qubits):
             for q2 in range(q1 + 1, num_qubits):
@@ -199,10 +202,10 @@ def plot_ibm_network_inference(
 
         mi_data = [
             [np.abs(mi_match - data_jsons[i]["mutual_infos"][j]) for i in range(num_trials)]
-            for j in range(num_iterations)
+            for j in range(num_mi_iterations)
         ]
 
-        mean_mi_data = [sum(mi_data[i]) / num_trials for i in range(num_iterations)]
+        mean_mi_data = [sum(mi_data[i]) / num_trials for i in range(num_mi_iterations)]
         min_mi_data = [
             reduce(lambda x, y: np.minimum(x, y), mutual_infos) for mutual_infos in mi_data
         ]
@@ -235,7 +238,7 @@ def plot_ibm_network_inference(
 
         mean_mi_dist_std_err = []
         mean_mi_dists = []
-        for j in range(num_iterations):
+        for j in range(num_mi_iterations):
             data_list = []
             for k in range(num_trials):
                 data_list += mi_data[j][k].tolist()
@@ -247,13 +250,13 @@ def plot_ibm_network_inference(
         mean_mi_dist_std_err = np.array(mean_mi_dist_std_err)
 
         ax3.semilogy(
-            range(num_iterations),
+            range(num_mi_iterations),
             mean_mi_dists,
             color=_COLORS[i],
             alpha=3 / 4,
         )
         ax3.fill_between(
-            range(num_iterations),
+            range(num_mi_iterations),
             mean_mi_dists - mean_mi_dist_std_err,
             mean_mi_dists + mean_mi_dist_std_err,
             alpha=1 / 4,
@@ -261,14 +264,14 @@ def plot_ibm_network_inference(
         )
 
         ax3.semilogy(
-            range(num_iterations),
+            range(num_mi_iterations),
             mean_min_mi_qubit_distances,
             linestyle="--",
             color=_COLORS[i],
             alpha=3 / 4,
         )
         ax3.fill_between(
-            range(num_iterations),
+            range(num_mi_iterations),
             mean_min_mi_qubit_distances - min_mi_qubit_distances_std_err,
             mean_min_mi_qubit_distances + min_mi_qubit_distances_std_err,
             alpha=1 / 4,
@@ -278,6 +281,10 @@ def plot_ibm_network_inference(
         """
         plotting meaasured mutual info entropy data
         """
+        num_mmi_iterations = min(
+            [len(data_json["measured_mutual_infos"]) for data_json in data_jsons]
+        )
+
         mmi_match = []
         for q1 in range(num_qubits):
             for q2 in range(q1 + 1, num_qubits):
@@ -289,10 +296,10 @@ def plot_ibm_network_inference(
                 np.abs(mmi_match - data_jsons[i]["measured_mutual_infos"][j])
                 for i in range(num_trials)
             ]
-            for j in range(num_iterations)
+            for j in range(num_mmi_iterations)
         ]
 
-        mean_mmi_data = [sum(mmi_data[i]) / num_trials for i in range(num_iterations)]
+        mean_mmi_data = [sum(mmi_data[i]) / num_trials for i in range(num_mmi_iterations)]
         min_mmi_data = [
             reduce(lambda x, y: np.minimum(x, y), mutual_infos) for mutual_infos in mmi_data
         ]
@@ -325,7 +332,7 @@ def plot_ibm_network_inference(
 
         mean_mmi_dist_std_err = []
         mean_mmi_dists = []
-        for j in range(num_iterations):
+        for j in range(num_mmi_iterations):
             data_list = []
             for k in range(num_trials):
                 data_list += mmi_data[j][k].tolist()
@@ -337,13 +344,13 @@ def plot_ibm_network_inference(
         mean_mmi_dist_std_err = np.array(mean_mmi_dist_std_err)
 
         ax4.semilogy(
-            range(num_iterations),
+            range(num_mmi_iterations),
             mean_mmi_dists,
             color=_COLORS[i],
             alpha=3 / 4,
         )
         ax4.fill_between(
-            range(num_iterations),
+            range(num_mmi_iterations),
             mean_mmi_dists - mean_mmi_dist_std_err,
             mean_mmi_dists + mean_mmi_dist_std_err,
             alpha=1 / 4,
@@ -351,14 +358,14 @@ def plot_ibm_network_inference(
         )
 
         ax4.semilogy(
-            range(num_iterations),
+            range(num_mmi_iterations),
             mean_min_mmi_qubit_distances,
             linestyle="--",
             color=_COLORS[i],
             alpha=3 / 4,
         )
         ax4.fill_between(
-            range(num_iterations),
+            range(num_mmi_iterations),
             mean_min_mmi_qubit_distances - min_mmi_qubit_distances_std_err,
             mean_min_mmi_qubit_distances + min_mmi_qubit_distances_std_err,
             alpha=1 / 4,
