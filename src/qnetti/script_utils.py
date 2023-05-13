@@ -72,7 +72,7 @@ def infer_ibm_network_shot_dependence(
         dev_kwargs["shots"] = shots
 
         # helper functions to obtain per qubit cost data
-        cov_mat = qubit_covariance_matrix_fn(
+        cov_mat_fn = qubit_covariance_matrix_fn(
             prep_node, meas_wires=meas_wires, dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
         )
         probs_qnode, dev = qubit_probs_qnode_fn(
@@ -99,11 +99,16 @@ def infer_ibm_network_shot_dependence(
         num_steps = max(num_cov_steps, num_vn_steps, num_mi_steps, num_mmi_steps)
         file_name = ibm_device_name + "_" + datetime_now_string()
 
+        cov_err = False
+        vn_err = False
+        mi_err = False
+        mmi_err = False
+
         for step in range(curr_step, num_steps):
             print("num shots :  ", shots, ", step :  ", step, " / ", num_steps - 1)
             step_start_time = time()
 
-            if step < num_cov_steps:
+            if step < num_cov_steps and not (cov_err):
                 cov_opt_kwargs = {
                     "num_steps": len(cov_opt_dict["settings_list"]) if cov_opt_dict else 1,
                     "step_size": cov_step_size,
@@ -121,17 +126,25 @@ def infer_ibm_network_shot_dependence(
                     **cov_opt_kwargs,
                 )
 
-                if "cov_mats" in cov_opt_dict:
-                    cov_opt_dict["cov_mats"] += [cov_mat.tolist()]
+                if cov_opt_dict["error"]:
+                    cov_err = True
+                    print("cov opt error")
                 else:
-                    cov_opt_dict["cov_mats"] = [cov_mat.tolist()]
+                    if "cov_mats" in cov_opt_dict:
+                        cov_opt_dict["cov_mats"] += [cov_mat.tolist()]
+                    else:
+                        # add inital cov mat and cov mat after first optimization step
+                        cov_opt_dict["cov_mats"] = [
+                            cov_mat_fn(cov_opt_dict["settings_list"][0]).tolist(),
+                            cov_mat.tolist(),
+                        ]
 
-                tmp_path = tmp_dir(shots_cov_filepath)
-                write_json(cov_opt_dict, tmp_path + file_name)
+                    tmp_path = tmp_dir(shots_cov_filepath)
+                    write_json(cov_opt_dict, tmp_path + file_name)
 
-                print("cov opt step time : ", cov_opt_dict["opt_step_times"][-1])
+                    print("cov opt step time : ", cov_opt_dict["opt_step_times"][-1])
 
-            if step < num_vn_steps:
+            if step < num_vn_steps and not (vn_err):
                 vn_opt_kwargs = {
                     "num_steps": len(vn_opt_dict["settings_list"]) if vn_opt_dict else 1,
                     "step_size": vn_step_size,
@@ -148,20 +161,28 @@ def infer_ibm_network_shot_dependence(
                     qnode_kwargs=qnode_kwargs,
                     **vn_opt_kwargs,
                 )
-                vn_entropies = qubit_shannon_entropies(
-                    probs_qnode(vn_opt_dict["settings_list"][-1])
-                )
-                if "vn_entropies" in vn_opt_dict:
-                    vn_opt_dict["vn_entropies"] += [vn_entropies]
+
+                if vn_opt_dict["error"]:
+                    vn_err = True
+                    print("vn opt error")
                 else:
-                    vn_opt_dict["vn_entropies"] = [vn_entropies]
+                    vn_entropies = qubit_shannon_entropies(
+                        probs_qnode(vn_opt_dict["settings_list"][-1])
+                    )
+                    if "vn_entropies" in vn_opt_dict:
+                        vn_opt_dict["vn_entropies"] += [vn_entropies]
+                    else:
+                        vn_opt_dict["vn_entropies"] = [
+                            qubit_shannon_entropies(probs_qnode(vn_opt_dict["settings_list"][0])),
+                            vn_entropies,
+                        ]
 
-                tmp_path = tmp_dir(shots_vn_filepath)
-                write_json(vn_opt_dict, tmp_path + file_name)
+                    tmp_path = tmp_dir(shots_vn_filepath)
+                    write_json(vn_opt_dict, tmp_path + file_name)
 
-                print("vn opt step time : ", vn_opt_dict["opt_step_times"][-1])
+                    print("vn opt step time : ", vn_opt_dict["opt_step_times"][-1])
 
-            if step < num_mi_steps:
+            if step < num_mi_steps and not (mi_err):
                 mi_opt_kwargs = {
                     "num_steps": len(mi_opt_dict["settings_list"]) if mi_opt_dict else 1,
                     "step_size": mi_step_size,
@@ -178,18 +199,26 @@ def infer_ibm_network_shot_dependence(
                     qnode_kwargs=qnode_kwargs,
                     **mi_opt_kwargs,
                 )
-                mutual_infos = qubit_mutual_infos(probs_qnode(mi_opt_dict["settings_list"][-1]))
-                if "mutual_infos" in mi_opt_dict:
-                    mi_opt_dict["mutual_infos"] += [mutual_infos]
+
+                if mi_opt_dict["error"]:
+                    mi_err = True
+                    print("mi opt error")
                 else:
-                    mi_opt_dict["mutual_infos"] = [mutual_infos]
+                    mutual_infos = qubit_mutual_infos(probs_qnode(mi_opt_dict["settings_list"][-1]))
+                    if "mutual_infos" in mi_opt_dict:
+                        mi_opt_dict["mutual_infos"] += [mutual_infos]
+                    else:
+                        mi_opt_dict["mutual_infos"] = [
+                            qubit_mutual_infos(probs_qnode(mi_opt_dict["settings_list"][0])),
+                            mutual_infos,
+                        ]
 
-                tmp_path = tmp_dir(shots_mi_filepath)
-                write_json(mi_opt_dict, tmp_path + file_name)
+                    tmp_path = tmp_dir(shots_mi_filepath)
+                    write_json(mi_opt_dict, tmp_path + file_name)
 
-                print("mi opt step time : ", mi_opt_dict["opt_step_times"][-1])
+                    print("mi opt step time : ", mi_opt_dict["opt_step_times"][-1])
 
-            if step < num_mmi_steps:
+            if step < num_mmi_steps and not (mmi_err):
                 mmi_opt_kwargs = {
                     "num_steps": len(mmi_opt_dict["settings_list"]) if mmi_opt_dict else 1,
                     "step_size": mmi_step_size,
@@ -206,39 +235,46 @@ def infer_ibm_network_shot_dependence(
                     **mmi_opt_kwargs,
                 )
 
-                measured_mutual_infos = qubit_mmis(mmi_opt_dict["settings_list"][-1])
-                if "measured_mutual_infos" in mmi_opt_dict:
-                    mmi_opt_dict["measured_mutual_infos"] += [measured_mutual_infos]
+                if mmi_opt_dict["error"]:
+                    mmi_err = True
+                    print("mmi opt error")
                 else:
-                    mmi_opt_dict["measured_mutual_infos"] = [measured_mutual_infos]
+                    measured_mutual_infos = qubit_mmis(mmi_opt_dict["settings_list"][-1])
+                    if "measured_mutual_infos" in mmi_opt_dict:
+                        mmi_opt_dict["measured_mutual_infos"] += [measured_mutual_infos]
+                    else:
+                        mmi_opt_dict["measured_mutual_infos"] = [
+                            qubit_mmis(mmi_opt_dict["settings_list"][0]),
+                            measured_mutual_infos,
+                        ]
 
-                tmp_path = tmp_dir(shots_mmi_filepath)
-                write_json(mmi_opt_dict, tmp_path + file_name)
+                    tmp_path = tmp_dir(shots_mmi_filepath)
+                    write_json(mmi_opt_dict, tmp_path + file_name)
 
-                print("mmi opt step time : ", mmi_opt_dict["opt_step_times"][-1])
+                    print("mmi opt step time : ", mmi_opt_dict["opt_step_times"][-1])
 
-            print("Iteration time : ", time() - step_start_time)
+                    print("Iteration time : ", time() - step_start_time)
 
         # write data after complete optimizataion
-        if num_cov_steps:
+        if num_cov_steps and not (cov_err):
             write_json(
                 cov_opt_dict,
                 shots_cov_filepath + file_name,
             )
 
-        if num_vn_steps:
+        if num_vn_steps and not (vn_err):
             write_json(
                 vn_opt_dict,
                 shots_vn_filepath + file_name,
             )
 
-        if num_mi_steps:
+        if num_mi_steps and not (mi_err):
             write_json(
                 mi_opt_dict,
                 shots_mi_filepath + file_name,
             )
 
-        if num_mmi_steps:
+        if num_mmi_steps and not (mmi_err):
             write_json(
                 mmi_opt_dict,
                 shots_mmi_filepath + file_name,

@@ -66,6 +66,7 @@ def optimize(
     * ``"step_size"`` - ``float``, The step size used in the optimization.
     * ``"datetime"`` - ``string``, The date/time at which the data is optimization begins.
     * ``"opt_step_time"`` - ``float``, The time needed to make each optimization step.
+    * ``"error"`` - ``boolean``, Indicates whether or not an error occurred during optimization.
     """
 
     datetime_now_str = datetime_now_string()
@@ -85,6 +86,8 @@ def optimize(
             **meta_opt_kwargs,
         }
     )
+
+    opt_dict["error"] = False
 
     opt = qml.GradientDescentOptimizer(stepsize=step_size)
 
@@ -115,6 +118,8 @@ def optimize(
         )
         message = msg_template.format(type(err).__name__, str(i), err.args)
         print(message)
+
+        opt_dict["error"] = True
 
         tmp_path = tmp_dir(filepath)
         write_json(opt_dict, tmp_path + filename + datetime_now_str)

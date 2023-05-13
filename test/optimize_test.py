@@ -57,3 +57,5 @@ def test_optimize_one_param_quadratic():
     assert all(map(lambda x: isinstance(x, float), opt_dict["opt_step_times"]))
 
     assert re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z$", opt_dict["datetime"])
+
+    assert opt_dict["error"] == False
