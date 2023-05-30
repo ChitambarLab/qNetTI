@@ -2,10 +2,15 @@ from matplotlib import pyplot as plt
 from functools import reduce
 import numpy as np
 import math
+import qnetvo
 
 from .file_utilities import *
+from .characteristic_matrices import *
+from .covariance_matrices import *
+from .qnodes import qubit_probs_qnode_fn
 
 _COLORS = ["C0", "C1", "C2", "C3", "C4", "C5", "C6"]
+_MARKERS = ["o", "d", "P", "^"]
 
 
 def plot_ibm_network_inference(
@@ -13,365 +18,471 @@ def plot_ibm_network_inference(
     device_name,
     shots_list,
     num_qubits,
+    prep_node,
+    ibm_device_name="ibmq_belem",
+    sim_device_name="default.qubit",
+    title="",
     cov_mat_match=[],
     mi_char_mat_match=[],
     mmi_char_mat_match=[],
+    opt_yticks=[],
 ):
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(ncols=2, nrows=2)
+    # setting font sizes
+    title_fontsize = 20
+    subplot_fontsize = 12
+
+    # configuring figures and axes
+    opt_fig, (
+        (cov_opt_ax1, cov_opt_ax2, cov_opt_ax3),
+        (char_opt_ax1, char_opt_ax2, char_opt_ax3),
+    ) = plt.subplots(ncols=3, nrows=2, figsize=(10, 5), constrained_layout=True)
+
+    opt_fig.suptitle(title + " Qubit Topology Inference Error", fontsize=title_fontsize)
+
+    cov_opt_ax1.set_title("Classical Simulator", fontweight="bold")
+    cov_opt_ax2.set_title("IBM Hardware (Noisy)", fontweight="bold")
+    cov_opt_ax3.set_title("IBM Hardware (Noiseless)", fontweight="bold")
+
+    char_opt_ax1.set_xlabel("Optimization Step", fontsize=subplot_fontsize)
+    char_opt_ax2.set_xlabel("Optimization Step", fontsize=subplot_fontsize)
+    char_opt_ax3.set_xlabel("Optimization Step", fontsize=subplot_fontsize)
+
+    cov_opt_ax1.set_ylabel("Error", fontsize=subplot_fontsize)
+    char_opt_ax1.set_ylabel("Error", fontsize=subplot_fontsize)
+
+    cov_opt_ax1.grid()
+    cov_opt_ax2.grid()
+    cov_opt_ax3.grid()
+    char_opt_ax1.grid()
+    char_opt_ax2.grid()
+    char_opt_ax3.grid()
+
+    for ax_title, ax in [("Covariance", cov_opt_ax1), ("Characteristic", char_opt_ax1)]:
+        ax.annotate(
+            ax_title,
+            xy=(-1.5, 0.5),
+            xytext=(-ax.yaxis.labelpad, 0),
+            xycoords=ax.yaxis.label,
+            textcoords="offset points",
+            size=subplot_fontsize,
+            ha="center",
+            va="center",
+            rotation=90,
+            fontweight="bold",
+        )
+
+    # functions for collecting noiseless data from optimized settings
+    cov_mat_fn = qubit_covariance_matrix_fn(prep_node, meas_wires=range(num_qubits))
+    probs_qnode, dev = qubit_probs_qnode_fn(prep_node, meas_wires=range(num_qubits))
+
+    line_handles = []
 
     for i, shots in enumerate(shots_list):
         shots_path = "shots_" + str(shots)
 
-        filenames = get_files(
-            data_dir + shots_path, device_name + "_\d\d\d\d-\d\d-\d\dT\d\d-\d\d-\d\dZ"
-        )
-        print("filenmaens , ", filenames)
-        data_jsons = list(map(read_json, filenames))
-        num_trials = len(data_jsons)
+        mean_line_styles = {
+            "color": _COLORS[i],
+            "linestyle": "-",
+            "marker": _MARKERS[i],
+            "alpha": 3 / 4,
+        }
 
-        """
-        plotting covariance matrix data
-        """
-        num_cov_iterations = min([len(data_json["cov_mats"]) for data_json in data_jsons])
-        cov_mats_data = [
-            [
-                np.abs(cov_mat_match - np.abs(np.array(data_jsons[k]["cov_mats"][j])))
-                for k in range(num_trials)
+        std_err_line_styles = {
+            "color": _COLORS[i],
+            "linestyle": "-",
+            "alpha": 1 / 8,
+        }
+
+        for device_name in [ibm_device_name, sim_device_name]:
+            """
+            plotting covariance matrix data
+            """
+            cov_shots_path = shots_path + "/cov_opts"
+            cov_filenames = get_files(
+                data_dir + cov_shots_path, device_name + "_\d\d\d\d-\d\d-\d\dT\d\d-\d\d-\d\dZ"
+            )
+            cov_data_jsons = list(map(read_json, cov_filenames))
+            num_cov_trials = len(cov_data_jsons)
+            num_cov_iterations = len(cov_data_jsons[-1]["cov_mats"])
+
+            print("Cov, shots ", shots)
+            print("settings list len ", len(cov_data_jsons[0]["settings_list"]))
+            print("cov mats len ", len(cov_data_jsons[0]["cov_mats"]))
+
+            cov_mats_data = [
+                [
+                    # np.abs(cov_mat_match - np.abs(np.array(cov_data_jsons[k]["cov_mats"][j])))
+                    np.abs(np.array(cov_data_jsons[k]["cov_mats"][j]))
+                    for k in range(num_cov_trials)
+                ]
+                for j in range(num_cov_iterations)
             ]
-            for j in range(num_cov_iterations)
-        ]
 
-        # mean and min distance from optimal covariance matrix
-        mean_cov_mats_data = [sum(cov_mats_data[k]) / num_trials for k in range(num_cov_iterations)]
-        min_cov_mats_data = [
-            reduce(lambda x_mat, y_mat: np.minimum(x_mat, y_mat), cov_mats)
-            for cov_mats in cov_mats_data
-        ]
+            mean_cov_dists, mean_cov_dist_std_err = _mean_mat_dists(cov_mats_data, cov_mat_match)
 
-        mean_qubit_distances = np.array(
-            [
-                (np.sum(mean_cov_mat) + np.trace(mean_cov_mat)) / (num_qubits + num_qubits**2)
-                for mean_cov_mat in mean_cov_mats_data
-            ]
-        )
-        mean_min_qubit_distances = np.array(
-            [
-                (np.sum(min_cov_mat) + np.trace(min_cov_mat)) / (num_qubits + num_qubits**2)
-                for min_cov_mat in min_cov_mats_data
-            ]
-        )
+            if device_name == sim_device_name:
+                (cov_line_i,) = cov_opt_ax1.semilogy(
+                    range(num_cov_iterations),
+                    mean_cov_dists,
+                    **mean_line_styles,
+                    label="shots " + str(shots),
+                )
+                cov_opt_ax1.fill_between(
+                    range(num_cov_iterations),
+                    mean_cov_dists - mean_cov_dist_std_err,
+                    mean_cov_dists + mean_cov_dist_std_err,
+                    **std_err_line_styles,
+                )
 
-        mean_cov_dist_std_err = []
-        mean_cov_dists = []
-        for j in range(num_cov_iterations):
-            data_list = []
-            for k in range(num_trials):
-                for q1 in range(num_qubits):
-                    for q2 in range(q1, num_qubits):
-                        data_list += [cov_mats_data[j][k][q1, q2]]
+                line_handles += [cov_line_i]
+            else:
+                # compute noiseless data for hardware results
+                # compute inference heat maps for noisy hardware results
+                for opt_dict in cov_data_jsons:
+                    opt_dict["noiseless_cov_mats"] = []
+                    for settings in opt_dict["settings_list"]:
+                        opt_dict["noiseless_cov_mats"] += [cov_mat_fn(settings)]
 
-            mean_cov_dist_std_err += [np.std(data_list) / np.sqrt(len(data_list))]
-            mean_cov_dists += [sum(data_list) / len(data_list)]
+                noiseless_cov_mats_data = [
+                    [
+                        # np.abs(cov_mat_match - np.abs(np.array(cov_data_jsons[k]["noiseless_cov_mats"][j])))
+                        np.abs(np.array(cov_data_jsons[k]["noiseless_cov_mats"][j]))
+                        for k in range(num_cov_trials)
+                    ]
+                    for j in range(num_cov_iterations)
+                ]
 
-        mean_cov_dists = np.array(mean_cov_dists)
-        mean_cov_dist_std_err = np.array(mean_cov_dist_std_err)
+                noiseless_mean_cov_dists, noiseless_mean_cov_dist_std_err = _mean_mat_dists(
+                    noiseless_cov_mats_data, cov_mat_match
+                )
 
-        mean_min_std_err = np.array(
-            [np.std(min_cov_mat) / np.sqrt(25) for min_cov_mat in min_cov_mats_data]
-        )
-        mean_dist_std_err = np.array(
-            [np.std(mean_cov_mat) / np.sqrt(25) for mean_cov_mat in mean_cov_mats_data]
-        )
+                cov_opt_ax2.semilogy(range(num_cov_iterations), mean_cov_dists, **mean_line_styles)
+                cov_opt_ax2.fill_between(
+                    range(num_cov_iterations),
+                    mean_cov_dists - mean_cov_dist_std_err,
+                    mean_cov_dists + mean_cov_dist_std_err,
+                    **std_err_line_styles,
+                )
+                cov_opt_ax3.semilogy(
+                    range(num_cov_iterations),
+                    noiseless_mean_cov_dists,
+                    **mean_line_styles,
+                )
+                cov_opt_ax3.fill_between(
+                    range(num_cov_iterations),
+                    noiseless_mean_cov_dists - noiseless_mean_cov_dist_std_err,
+                    noiseless_mean_cov_dists + noiseless_mean_cov_dist_std_err,
+                    **std_err_line_styles,
+                )
 
-        ax1.semilogy(
-            range(num_cov_iterations),
-            # mean_qubit_distances,
-            mean_cov_dists,
-            label="shots " + str(shots),
-            color=_COLORS[i],
-            alpha=3 / 4,
-        )
-        ax1.fill_between(
-            range(num_cov_iterations),
-            # mean_qubit_distances - mean_dist_std_err,
-            # mean_qubit_distances + mean_dist_std_err,
-            mean_cov_dists - mean_cov_dist_std_err,
-            mean_cov_dists + mean_cov_dist_std_err,
-            alpha=1 / 4,
-            color=_COLORS[i],
-        )
+            """
+            loading von neumann entropy data
+            """
+            vn_shots_path = shots_path + "/vn_opts"
+            vn_filenames = get_files(
+                data_dir + vn_shots_path, device_name + "_\d\d\d\d-\d\d-\d\dT\d\d-\d\d-\d\dZ"
+            )
+            vn_data_jsons = list(map(read_json, vn_filenames))
 
-        ax1.semilogy(
-            range(num_cov_iterations),
-            mean_min_qubit_distances,
-            linestyle="--",
-            color=_COLORS[i],
-            alpha=3 / 4,
-        )
-        ax1.fill_between(
-            range(num_cov_iterations),
-            mean_min_qubit_distances - mean_min_std_err,
-            mean_min_qubit_distances + mean_min_std_err,
-            alpha=1 / 4,
-            color=_COLORS[i],
-        )
+            print("VN, shots ", shots)
+            print("settings list len ", len(vn_data_jsons[0]["settings_list"]))
+            print("vn mats len ", len(vn_data_jsons[0]["vn_entropies"]))
 
-        """
-        plotting von neumann entropy data
-        """
-        num_vn_iterations = min([len(data_json["vn_entropies"]) for data_json in data_jsons])
-        vn_ent_match = np.diag(mi_char_mat_match)
-        vn_ents_data = [
-            [np.abs(vn_ent_match - data_jsons[k]["vn_entropies"][j]) for k in range(num_trials)]
-            for j in range(num_vn_iterations)
-        ]
+            """
+            Loading mutual info data
+            """
+            mi_shots_path = shots_path + "/mi_opts"
+            mi_filenames = get_files(
+                data_dir + mi_shots_path, device_name + "_\d\d\d\d-\d\d-\d\dT\d\d-\d\d-\d\dZ"
+            )
+            mi_data_jsons = list(map(read_json, mi_filenames))
 
-        mean_vn_ents_data = [sum(vn_ents_data[k]) / num_trials for k in range(num_vn_iterations)]
-        min_vn_dist_data = [
-            reduce(lambda x, y: np.minimum(x, y), vn_ents) for vn_ents in vn_ents_data
-        ]
+            print("MI, shots ", shots)
+            print("settings list len ", len(mi_data_jsons[0]["settings_list"]))
+            print("mi mats len ", len(mi_data_jsons[0]["mutual_infos"]))
 
-        mean_vn_qubit_distances = np.array(
-            [np.sum(mean_vn_ents) / num_qubits for mean_vn_ents in mean_vn_ents_data]
-        )
-        mean_min_vn_qubit_distances = np.array(
-            [np.sum(min_vn_dists) / num_qubits for min_vn_dists in min_vn_dist_data]
-        )
+            """
+            constructing/plotting characteristic matrices
+            """
+            char_mats = _char_mats_from_data_jsons(vn_data_jsons, mi_data_jsons)
+            mean_char_dists, mean_char_dist_std_err = _mean_mat_dists(char_mats, mi_char_mat_match)
 
-        min_vn_qubit_distances_std_err = np.array(
-            [np.std(min_vn_ents) / num_qubits for min_vn_ents in min_vn_dist_data]
-        )
-        mean_vn_qubit_distances_std_err = np.array(
-            [np.std(mean_vn_ents) / num_qubits for mean_vn_ents in mean_vn_ents_data]
-        )
+            num_char_iterations = len(mean_char_dists)
+            if device_name == sim_device_name:
+                char_opt_ax1.semilogy(
+                    range(num_char_iterations),
+                    mean_char_dists,
+                    **mean_line_styles,
+                    label="shots " + str(shots),
+                )
+                char_opt_ax1.fill_between(
+                    range(num_char_iterations),
+                    mean_char_dists - mean_char_dist_std_err,
+                    mean_char_dists + mean_char_dist_std_err,
+                    **std_err_line_styles,
+                )
+            else:
+                for opt_dict in vn_data_jsons:
+                    opt_dict["noiseless_vn_entropies"] = []
+                    for settings in opt_dict["settings_list"]:
+                        opt_dict["noiseless_vn_entropies"] += [
+                            qubit_shannon_entropies(probs_qnode(settings))
+                        ]
 
-        mean_vn_dist_std_err = []
-        mean_vn_dists = []
-        for j in range(num_vn_iterations):
-            data_list = []
-            for k in range(num_trials):
-                print(vn_ents_data[j][k])
-                data_list += vn_ents_data[j][k].tolist()
+                for opt_dict in mi_data_jsons:
+                    opt_dict["noiseless_mutual_infos"] = []
+                    for settings in opt_dict["settings_list"]:
+                        opt_dict["noiseless_mutual_infos"] += [
+                            qubit_mutual_infos(probs_qnode(settings))
+                        ]
 
-            mean_vn_dist_std_err += [np.std(data_list) / np.sqrt(len(data_list))]
-            mean_vn_dists += [sum(data_list) / len(data_list)]
+                noiseless_char_mats = _char_mats_from_data_jsons(
+                    vn_data_jsons, mi_data_jsons, noiseless=True
+                )
+                noiseless_mean_char_dists, noiseless_mean_char_dist_std_err = _mean_mat_dists(
+                    noiseless_char_mats, mi_char_mat_match
+                )
 
-        mean_vn_dists = np.array(mean_vn_dists)
-        mean_vn_dist_std_err = np.array(mean_vn_dist_std_err)
+                num_noiseless_char_iterations = len(noiseless_mean_char_dists)
+                char_opt_ax2.semilogy(
+                    range(num_char_iterations), mean_char_dists, **mean_line_styles
+                )
+                char_opt_ax2.fill_between(
+                    range(num_char_iterations),
+                    mean_char_dists - mean_char_dist_std_err,
+                    mean_char_dists + mean_char_dist_std_err,
+                    **std_err_line_styles,
+                )
+                char_opt_ax3.semilogy(
+                    range(num_noiseless_char_iterations),
+                    noiseless_mean_char_dists,
+                    **mean_line_styles,
+                )
+                char_opt_ax3.fill_between(
+                    range(num_noiseless_char_iterations),
+                    noiseless_mean_char_dists - noiseless_mean_char_dist_std_err,
+                    noiseless_mean_char_dists + noiseless_mean_char_dist_std_err,
+                    **std_err_line_styles,
+                )
 
-        ax2.semilogy(
-            range(num_vn_iterations),
-            mean_vn_dists,
-            color=_COLORS[i],
-            alpha=3 / 4,
-        )
-        ax2.fill_between(
-            range(num_vn_iterations),
-            mean_vn_dists - mean_vn_dist_std_err,
-            mean_vn_dists + mean_vn_dist_std_err,
-            alpha=1 / 4,
-            color=_COLORS[i],
-        )
+    if len(opt_yticks):
+        cov_opt_ax1.set_yticks(opt_yticks[0])
+        cov_opt_ax2.set_yticks(opt_yticks[1])
+        cov_opt_ax3.set_yticks(opt_yticks[2])
+        char_opt_ax1.set_yticks(opt_yticks[3])
+        char_opt_ax2.set_yticks(opt_yticks[4])
+        char_opt_ax3.set_yticks(opt_yticks[5])
 
-        ax2.semilogy(
-            range(num_vn_iterations),
-            mean_min_vn_qubit_distances,
-            linestyle="--",
-            color=_COLORS[i],
-            alpha=3 / 4,
-        )
-        ax2.fill_between(
-            range(num_vn_iterations),
-            mean_min_vn_qubit_distances - min_vn_qubit_distances_std_err,
-            mean_min_vn_qubit_distances + min_vn_qubit_distances_std_err,
-            alpha=1 / 4,
-            color=_COLORS[i],
-        )
-        ax2.set_ylim([0.0001, 1])
+    plt.figlegend(handles=line_handles, loc="lower center", ncol=4)
 
-        """
-        plotting classical mutual info entropy data
-        """
-        num_mi_iterations = min([len(data_json["mutual_infos"]) for data_json in data_jsons])
+    opt_fig.tight_layout()
+    plt.subplots_adjust(bottom=0.25)
 
-        mi_match = []
-        for q1 in range(num_qubits):
-            for q2 in range(q1 + 1, num_qubits):
-                mi_match += [mi_char_mat_match[q1, q2]]
-        mi_match = np.array(mi_match)
+    plt.show()
 
-        mi_data = [
-            [np.abs(mi_match - data_jsons[i]["mutual_infos"][j]) for i in range(num_trials)]
-            for j in range(num_mi_iterations)
-        ]
 
-        mean_mi_data = [sum(mi_data[i]) / num_trials for i in range(num_mi_iterations)]
-        min_mi_data = [
-            reduce(lambda x, y: np.minimum(x, y), mutual_infos) for mutual_infos in mi_data
-        ]
+def _char_mats_from_data_jsons(vn_data_jsons, mi_data_jsons, noiseless=False):
+    mi_key = "mutual_infos"
+    vn_key = "vn_entropies"
+    if noiseless:
+        mi_key = "noiseless_" + mi_key
+        vn_key = "noiseless_" + vn_key
 
-        mean_mi_qubit_distances = np.array(
-            [
-                np.sum(mean_mutual_infos) / math.comb(num_qubits, 2)
-                for mean_mutual_infos in mean_mi_data
-            ]
-        )
-        mean_min_mi_qubit_distances = np.array(
-            [
-                np.sum(min_mutual_infos) / math.comb(num_qubits, 2)
-                for min_mutual_infos in min_mi_data
-            ]
-        )
+    num_mi_trials = len(mi_data_jsons)
+    num_vn_trials = len(mi_data_jsons)
 
-        min_mi_qubit_distances_std_err = np.array(
-            [
-                np.std(min_mutual_infos) / math.comb(num_qubits, 2)
-                for min_mutual_infos in min_mi_data
-            ]
-        )
-        mean_mi_qubit_distances_std_err = np.array(
-            [
-                np.std(mean_mutual_infos) / math.comb(num_qubits, 2)
-                for mean_mutual_infos in mean_mi_data
-            ]
-        )
+    print("num trials vn/mi : ", num_vn_trials, num_mi_trials)
 
-        mean_mi_dist_std_err = []
-        mean_mi_dists = []
+    num_mi_iterations = len(mi_data_jsons[-1][mi_key])
+    num_vn_iterations = len(vn_data_jsons[0][vn_key])
+
+    print("num_iterations vn/mi : ", num_vn_iterations, num_mi_iterations)
+    num_qubits = len(vn_data_jsons[0][vn_key][0])
+
+    char_mats = []
+    if num_mi_iterations > num_vn_iterations:
+        total_sum_vn_entropies = np.zeros(num_qubits)
+        for k in range(len(vn_data_jsons)):
+            for j in range(len(vn_data_jsons[k][vn_key])):
+                total_sum_vn_entropies += np.array(vn_data_jsons[k][vn_key][j])
+        total_mean_vn_entropies = total_sum_vn_entropies / (num_vn_iterations * num_vn_trials)
+
         for j in range(num_mi_iterations):
-            data_list = []
-            for k in range(num_trials):
-                data_list += mi_data[j][k].tolist()
+            char_mats += [[]]
+            for k in range(num_mi_trials):
+                char_mat = np.zeros((num_qubits, num_qubits))
+                for q in range(num_qubits):
+                    char_mat[q, q] = total_mean_vn_entropies[q]
 
-            mean_mi_dist_std_err += [np.std(data_list) / np.sqrt(len(data_list))]
-            mean_mi_dists += [sum(data_list) / len(data_list)]
+                mi_id = 0
+                for q1 in range(num_qubits):
+                    for q2 in range(q1 + 1, num_qubits):
+                        char_mat[q1, q2] = mi_data_jsons[k][mi_key][j][mi_id]
+                        char_mat[q2, q1] = mi_data_jsons[k][mi_key][j][mi_id]
+                        mi_id += 1
 
-        mean_mi_dists = np.array(mean_mi_dists)
-        mean_mi_dist_std_err = np.array(mean_mi_dist_std_err)
+                char_mats[j] += [char_mat]
+    else:
+        total_sum_mi = np.zeros(math.comb(num_qubits, 2))
+        for j in range(num_mi_iterations):
+            for k in range(num_mi_trials):
+                total_sum_mi += np.array(mi_data_jsons[k][mi_key][j])
+        total_mean_mi = total_sum_mi / (num_mi_iterations * num_mi_trials)
 
-        ax3.semilogy(
-            range(num_mi_iterations),
-            mean_mi_dists,
-            color=_COLORS[i],
-            alpha=3 / 4,
-        )
-        ax3.fill_between(
-            range(num_mi_iterations),
-            mean_mi_dists - mean_mi_dist_std_err,
-            mean_mi_dists + mean_mi_dist_std_err,
-            alpha=1 / 4,
-            color=_COLORS[i],
-        )
+        for j in range(num_vn_iterations):
+            char_mats += [[]]
+            for k in range(num_vn_trials):
+                char_mat = np.zeros((num_qubits, num_qubits))
+                for q in range(num_qubits):
+                    char_mat[q, q] = vn_data_jsons[k][vn_key][j][q]
 
-        ax3.semilogy(
-            range(num_mi_iterations),
-            mean_min_mi_qubit_distances,
-            linestyle="--",
-            color=_COLORS[i],
-            alpha=3 / 4,
-        )
-        ax3.fill_between(
-            range(num_mi_iterations),
-            mean_min_mi_qubit_distances - min_mi_qubit_distances_std_err,
-            mean_min_mi_qubit_distances + min_mi_qubit_distances_std_err,
-            alpha=1 / 4,
-            color=_COLORS[i],
-        )
+                mi_id = 0
+                for q1 in range(num_qubits):
+                    for q2 in range(q1 + 1, num_qubits):
+                        char_mat[q1, q2] = total_mean_mi[mi_id]
+                        char_mat[q2, q1] = total_mean_mi[mi_id]
 
-        """
-        plotting meaasured mutual info entropy data
-        """
-        num_mmi_iterations = min(
-            [len(data_json["measured_mutual_infos"]) for data_json in data_jsons]
-        )
+                char_mats[j] += [char_mat]
 
-        mmi_match = []
-        for q1 in range(num_qubits):
-            for q2 in range(q1 + 1, num_qubits):
-                mmi_match += [mmi_char_mat_match[q1, q2]]
-        mmi_match = np.array(mmi_match)
+    return char_mats
 
-        mmi_data = [
-            [
-                np.abs(mmi_match - data_jsons[i]["measured_mutual_infos"][j])
-                for i in range(num_trials)
-            ]
-            for j in range(num_mmi_iterations)
-        ]
 
-        mean_mmi_data = [sum(mmi_data[i]) / num_trials for i in range(num_mmi_iterations)]
-        min_mmi_data = [
-            reduce(lambda x, y: np.minimum(x, y), mutual_infos) for mutual_infos in mmi_data
-        ]
+def _mean_mat_dists(mats, mat_match):
+    mean_mat_dist_std_err = []
+    mean_mat_dists = []
+    for j in range(len(mats)):
+        mean_data_list = []
+        for k in range(len(mats[j])):
+            mat_diff = mat_match - np.array(mats[j][k])
+            mean_data_list += [np.sqrt(np.trace(mat_diff.T @ mat_diff))]
 
-        mean_mmi_qubit_distances = np.array(
-            [
-                np.sum(mean_mutual_infos) / math.comb(num_qubits, 2)
-                for mean_mutual_infos in mean_mmi_data
-            ]
-        )
-        mean_min_mmi_qubit_distances = np.array(
-            [
-                np.sum(min_mutual_infos) / math.comb(num_qubits, 2)
-                for min_mutual_infos in min_mmi_data
-            ]
-        )
+        mean_mat_dist_std_err += [np.std(mean_data_list) / np.sqrt(len(mats[j]))]
+        mean_mat_dists += [sum(mean_data_list) / len(mats[j])]
 
-        min_mmi_qubit_distances_std_err = np.array(
-            [
-                np.std(min_mutual_infos) / math.comb(num_qubits, 2)
-                for min_mutual_infos in min_mmi_data
-            ]
-        )
-        mean_mmi_qubit_distances_std_err = np.array(
-            [
-                np.std(mean_mutual_infos) / math.comb(num_qubits, 2)
-                for mean_mutual_infos in mean_mmi_data
-            ]
-        )
+    mean_mat_dists = np.array(mean_mat_dists)
+    mean_mat_dist_std_err = np.array(mean_mat_dist_std_err)
 
-        mean_mmi_dist_std_err = []
-        mean_mmi_dists = []
-        for j in range(num_mmi_iterations):
-            data_list = []
-            for k in range(num_trials):
-                data_list += mmi_data[j][k].tolist()
+    return mean_mat_dists, mean_mat_dist_std_err
 
-            mean_mmi_dist_std_err += [np.std(data_list) / np.sqrt(len(data_list))]
-            mean_mmi_dists += [sum(data_list) / len(data_list)]
 
-        mean_mmi_dists = np.array(mean_mmi_dists)
-        mean_mmi_dist_std_err = np.array(mean_mmi_dist_std_err)
+def plot_qubit_inference_heat_map(
+    data_dir, device_name, title="", cov_mat_match=None, char_mat_match=None
+):
+    heat_map_fig, (hm_cov_mat_axes, hm_char_mat_axes) = plt.subplots(
+        ncols=5, nrows=2, figsize=(12, 5)
+    )  # , constrained_layout=True)
 
-        ax4.semilogy(
-            range(num_mmi_iterations),
-            mean_mmi_dists,
-            color=_COLORS[i],
-            alpha=3 / 4,
-        )
-        ax4.fill_between(
-            range(num_mmi_iterations),
-            mean_mmi_dists - mean_mmi_dist_std_err,
-            mean_mmi_dists + mean_mmi_dist_std_err,
-            alpha=1 / 4,
-            color=_COLORS[i],
+    title_fontsize = 18
+    subplot_fontsize = 16
+    heat_map_fig.suptitle(
+        "Optimal Qubit Inference Matrices for a " + title + " on IBM Hardware",
+        fontsize=title_fontsize,
+    )
+
+    hm_cov_mat_axes[0].set_title("Ideal", fontweight="bold")
+    hm_cov_mat_axes[1].set_title("10 Shots", fontweight="bold")
+    hm_cov_mat_axes[2].set_title("100 Shots", fontweight="bold")
+    hm_cov_mat_axes[3].set_title("1000 Shots", fontweight="bold")
+    hm_cov_mat_axes[4].set_title("10000 Shots", fontweight="bold")
+
+    for ax_title, ax in [
+        ("Covariance", hm_cov_mat_axes[0]),
+        ("Characteristic", hm_char_mat_axes[0]),
+    ]:
+        ax.annotate(
+            ax_title,
+            xy=(-1, 0.5),
+            xytext=(-ax.yaxis.labelpad, 0),
+            xycoords=ax.yaxis.label,
+            textcoords="offset points",
+            size=subplot_fontsize,
+            ha="center",
+            va="center",
+            rotation=90,
+            fontweight="bold",
         )
 
-        ax4.semilogy(
-            range(num_mmi_iterations),
-            mean_min_mmi_qubit_distances,
-            linestyle="--",
-            color=_COLORS[i],
-            alpha=3 / 4,
+    pcm_cov = hm_cov_mat_axes[0].matshow(cov_mat_match, vmin=0, vmax=1)
+    pcm_char = hm_char_mat_axes[0].matshow(char_mat_match, vmin=0, vmax=1)
+
+    cb_ax1 = heat_map_fig.add_axes([0.95, 0.04, 0.01, 0.8])
+    cbar = heat_map_fig.colorbar(pcm_cov, cax=cb_ax1)
+
+    for ax in [*hm_cov_mat_axes, *hm_char_mat_axes]:
+        ax.set_xticks([x - 0.5 for x in range(1, 5)], minor=True)
+        ax.set_yticks([y - 0.5 for y in range(1, 5)], minor=True)
+        ax.grid(which="minor", ls="-", lw=1, color="black")
+
+    for i, shots in enumerate([10, 100, 1000, 10000]):
+        shots_path = "/shots_" + str(shots)
+
+        cov_filenames = get_files(
+            data_dir + shots_path + "/cov_opts", device_name + "_\d\d\d\d-\d\d-\d\dT\d\d-\d\d-\d\dZ"
         )
-        ax4.fill_between(
-            range(num_mmi_iterations),
-            mean_min_mmi_qubit_distances - min_mmi_qubit_distances_std_err,
-            mean_min_mmi_qubit_distances + min_mmi_qubit_distances_std_err,
-            alpha=1 / 4,
-            color=_COLORS[i],
+        cov_data_jsons = list(map(read_json, cov_filenames))
+        num_cov_trials = len(cov_data_jsons)
+        num_cov_iterations = len(cov_data_jsons[-1]["cov_mats"])
+
+        mi_filenames = get_files(
+            data_dir + shots_path + "/mi_opts", device_name + "_\d\d\d\d-\d\d-\d\dT\d\d-\d\d-\d\dZ"
+        )
+        mi_data_jsons = list(map(read_json, mi_filenames))
+        num_mi_trials = len(mi_data_jsons)
+        num_mi_iterations = len(mi_data_jsons[-1]["mutual_infos"])
+
+        vn_filenames = get_files(
+            data_dir + shots_path + "/vn_opts", device_name + "_\d\d\d\d-\d\d-\d\dT\d\d-\d\d-\d\dZ"
+        )
+        vn_data_jsons = list(map(read_json, vn_filenames))
+        num_vn_trials = len(vn_data_jsons)
+        num_vn_iterations = len(vn_data_jsons[-1]["vn_entropies"])
+
+        max_cov_mat = np.zeros((5, 5))
+        for j in range(num_cov_iterations):
+            for k in range(num_cov_trials):
+                cov_mat = np.abs(np.array(cov_data_jsons[k]["cov_mats"][j]))
+                for q1 in range(5):
+                    for q2 in range(5):
+                        if cov_mat[q1, q2] > max_cov_mat[q1, q2]:
+                            max_cov_mat[q1, q2] = cov_mat[q1, q2]
+
+        print(
+            "cov max dist: ",
+            np.sum(np.abs(cov_mat_match - max_cov_mat)) / 25,
+            " SHots:  ",
+            shots,
+            "",
         )
 
-    fig.legend()
+        pcm = hm_cov_mat_axes[i + 1].matshow(max_cov_mat, vmin=0, vmax=1)
 
+        min_vn_entropies = np.ones(5)
+        for j in range(num_vn_iterations):
+            for k in range(num_vn_trials):
+                vn_ents = vn_data_jsons[k]["vn_entropies"][j]
+                for q in range(5):
+                    if vn_ents[q] < min_vn_entropies[q]:
+                        min_vn_entropies[q] = vn_ents[q]
+
+        max_char_mat = np.zeros((5, 5))
+
+        for q in range(5):
+            max_char_mat[q, q] = min_vn_entropies[q]
+
+        for j in range(num_mi_iterations):
+            for k in range(num_mi_trials):
+                mis = np.array(mi_data_jsons[k]["mutual_infos"][j])
+                mi_id = 0
+                for q1 in range(5):
+                    for q2 in range(q1 + 1, 5):
+                        if mis[mi_id] > max_char_mat[q1, q2]:
+                            max_char_mat[q1, q2] = mis[mi_id]
+                            max_char_mat[q2, q1] = mis[mi_id]
+                        mi_id += 1
+
+        pcm = hm_char_mat_axes[i + 1].matshow(max_char_mat, vmin=0, vmax=1)
+        print("I : ", i)
+
+    heat_map_fig.tight_layout()
+    heat_map_fig.subplots_adjust(right=0.92)
     plt.show()
