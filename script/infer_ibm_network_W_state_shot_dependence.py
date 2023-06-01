@@ -37,8 +37,9 @@ python script/infer_ibm_network_W_state_shot_dependence.py cov 2 data/ibm_infere
 provider = IBMQ.load_account()
 
 # NOTE : when running on hardware replace "ibmq_qasm_simulator" with IBM device name
-ibm_device_name = "ibmq_qasm_simulator"
+# ibm_device_name = "ibmq_qasm_simulator"
 # ibm_device_name = "default.qubit"
+ibm_device_name = "ibmq_belem"
 
 shots_list = [10, 100, 1000, 10000]
 num_qubits = 5
@@ -48,13 +49,14 @@ def prep_circ(settings, wires):
     qnetvo.W_state([], wires=wires[0:3])
     qnetvo.ghz_state([], wires=wires[3:5])
 
+
 prep_node = qnetvo.PrepareNode(wires=range(num_qubits), ansatz_fn=prep_circ)
 prep_node_name = "W_state_2-qubit_ghz_state"
 
 kwargs = {}
 init_json = {}
 if len(sys.argv) > 2:
-    shots_list = shots_list[int(sys.argv[2]):]
+    shots_list = shots_list[int(sys.argv[2]) :]
     if len(sys.argv) > 3:
         init_json = qnetti.read_json(sys.argv[3])
         kwargs["warm_start_step"] = len(init_json["opt_step_times"])
@@ -64,14 +66,16 @@ if sys.argv[1] == "cov":
     kwargs["num_cov_steps"] = 20
     kwargs["cov_init_json"] = init_json
 elif sys.argv[1] == "vn":
-    kwargs["num_vn_steps"] = 10
+    kwargs["num_vn_steps"] = 40
     kwargs["vn_init_json"] = init_json
+    kwargs["vn_step_size"] = 1
 elif sys.argv[1] == "mi":
-    kwargs["num_mi_steps"] = 30
+    kwargs["num_mi_steps"] = 40
     kwargs["mi_init_json"] = init_json
+    kwargs["mi_step_size"] = 0.1
 elif sys.argv[1] == "mmi":
     kwargs["num_mmi_steps"] = 30
-    kwargs["mmi_init_json"] = init_json 
+    kwargs["mmi_init_json"] = init_json
 
 data_jsons = qnetti.infer_ibm_network_shot_dependence(
     provider,

@@ -26,6 +26,7 @@ def plot_ibm_network_inference(
     mi_char_mat_match=[],
     mmi_char_mat_match=[],
     opt_yticks=[],
+    avg_data=None,
 ):
     # setting font sizes
     title_fontsize = 20
@@ -33,22 +34,26 @@ def plot_ibm_network_inference(
 
     # configuring figures and axes
     opt_fig, (
-        (cov_opt_ax1, cov_opt_ax2, cov_opt_ax3),
-        (char_opt_ax1, char_opt_ax2, char_opt_ax3),
-    ) = plt.subplots(ncols=3, nrows=2, figsize=(10, 5), constrained_layout=True)
+        (cov_opt_ax1, char_opt_ax1, vn_opt_ax1, mi_opt_ax1),
+        (cov_opt_ax2, char_opt_ax2, vn_opt_ax2, mi_opt_ax2),
+        (cov_opt_ax3, char_opt_ax3, vn_opt_ax3, mi_opt_ax3),
+    ) = plt.subplots(ncols=4, nrows=3, figsize=(14, 8), constrained_layout=True)
 
     opt_fig.suptitle(title + " Qubit Topology Inference Error", fontsize=title_fontsize)
 
-    cov_opt_ax1.set_title("Classical Simulator", fontweight="bold")
-    cov_opt_ax2.set_title("IBM Hardware (Noisy)", fontweight="bold")
-    cov_opt_ax3.set_title("IBM Hardware (Noiseless)", fontweight="bold")
+    cov_opt_ax1.set_title("Covariance", fontweight="bold")
+    char_opt_ax1.set_title("Characteristic", fontweight="bold")
+    vn_opt_ax1.set_title("Shannon Entropy", fontweight="bold")
+    mi_opt_ax1.set_title("Mutual Information", fontweight="bold")
 
-    char_opt_ax1.set_xlabel("Optimization Step", fontsize=subplot_fontsize)
-    char_opt_ax2.set_xlabel("Optimization Step", fontsize=subplot_fontsize)
+    cov_opt_ax3.set_xlabel("Optimization Step", fontsize=subplot_fontsize)
     char_opt_ax3.set_xlabel("Optimization Step", fontsize=subplot_fontsize)
+    vn_opt_ax3.set_xlabel("Optimization Step", fontsize=subplot_fontsize)
+    mi_opt_ax3.set_xlabel("Optimization Step", fontsize=subplot_fontsize)
 
     cov_opt_ax1.set_ylabel("Error", fontsize=subplot_fontsize)
-    char_opt_ax1.set_ylabel("Error", fontsize=subplot_fontsize)
+    cov_opt_ax2.set_ylabel("Error", fontsize=subplot_fontsize)
+    cov_opt_ax3.set_ylabel("Error", fontsize=subplot_fontsize)
 
     cov_opt_ax1.grid()
     cov_opt_ax2.grid()
@@ -56,8 +61,18 @@ def plot_ibm_network_inference(
     char_opt_ax1.grid()
     char_opt_ax2.grid()
     char_opt_ax3.grid()
+    vn_opt_ax1.grid()
+    vn_opt_ax2.grid()
+    vn_opt_ax3.grid()
+    mi_opt_ax1.grid()
+    mi_opt_ax2.grid()
+    mi_opt_ax3.grid()
 
-    for ax_title, ax in [("Covariance", cov_opt_ax1), ("Characteristic", char_opt_ax1)]:
+    for ax_title, ax in [
+        ("Classical\nSimulator", cov_opt_ax1),
+        ("IBM Hardware\n(Noisy)", cov_opt_ax2),
+        ("IBM Hardware\n(Noiseless)", cov_opt_ax3),
+    ]:
         ax.annotate(
             ax_title,
             xy=(-1.5, 0.5),
@@ -204,8 +219,20 @@ def plot_ibm_network_inference(
             """
             constructing/plotting characteristic matrices
             """
-            char_mats = _char_mats_from_data_jsons(vn_data_jsons, mi_data_jsons)
+            char_mats, shannon_ents, mutual_infos = _char_mats_from_data_jsons(
+                vn_data_jsons, mi_data_jsons, avg_data=avg_data
+            )
             mean_char_dists, mean_char_dist_std_err = _mean_mat_dists(char_mats, mi_char_mat_match)
+
+            vn_match = np.diag(mi_char_mat_match)
+            mi_match = []
+            for q1 in range(len(vn_match)):
+                for q2 in range(q1 + 1, len(vn_match)):
+                    mi_match += [mi_char_mat_match[q1, q2]]
+            mi_match = np.array(mi_match)
+
+            mean_vn_dists, mean_vn_dist_std_err = _mean_mat_dists(shannon_ents, vn_match)
+            mean_mi_dists, mean_mi_dist_std_err = _mean_mat_dists(mutual_infos, mi_match)
 
             num_char_iterations = len(mean_char_dists)
             if device_name == sim_device_name:
@@ -219,6 +246,30 @@ def plot_ibm_network_inference(
                     range(num_char_iterations),
                     mean_char_dists - mean_char_dist_std_err,
                     mean_char_dists + mean_char_dist_std_err,
+                    **std_err_line_styles,
+                )
+                vn_opt_ax1.semilogy(
+                    range(len(mean_vn_dists)),
+                    mean_vn_dists,
+                    **mean_line_styles,
+                    label="shots " + str(shots),
+                )
+                vn_opt_ax1.fill_between(
+                    range(len(mean_vn_dists)),
+                    mean_vn_dists - mean_vn_dist_std_err,
+                    mean_vn_dists + mean_vn_dist_std_err,
+                    **std_err_line_styles,
+                )
+                mi_opt_ax1.semilogy(
+                    range(len(mean_mi_dists)),
+                    mean_mi_dists,
+                    **mean_line_styles,
+                    label="shots " + str(shots),
+                )
+                mi_opt_ax1.fill_between(
+                    range(len(mean_mi_dists)),
+                    mean_mi_dists - mean_mi_dist_std_err,
+                    mean_mi_dists + mean_mi_dist_std_err,
                     **std_err_line_styles,
                 )
             else:
@@ -236,11 +287,31 @@ def plot_ibm_network_inference(
                             qubit_mutual_infos(probs_qnode(settings))
                         ]
 
-                noiseless_char_mats = _char_mats_from_data_jsons(
-                    vn_data_jsons, mi_data_jsons, noiseless=True
+                (
+                    noiseless_char_mats,
+                    noiseless_shannon_ents,
+                    noiseless_mutual_infos,
+                ) = _char_mats_from_data_jsons(
+                    vn_data_jsons,
+                    mi_data_jsons,
+                    noiseless=True,
+                    avg_data=avg_data,
                 )
                 noiseless_mean_char_dists, noiseless_mean_char_dist_std_err = _mean_mat_dists(
                     noiseless_char_mats, mi_char_mat_match
+                )
+                noiseless_mean_vn_dists, noiseless_mean_vn_dist_std_err = _mean_mat_dists(
+                    noiseless_shannon_ents, vn_match
+                )
+                noiseless_mean_mi_dists, noiseless_mean_mi_dist_std_err = _mean_mat_dists(
+                    noiseless_mutual_infos, mi_match
+                )
+
+                noiseless_mean_vn_dists, noiseless_mean_vn_dist_std_err = _mean_mat_dists(
+                    noiseless_shannon_ents, vn_match
+                )
+                noiseless_mean_mi_dists, noiseless_mean_mi_dist_std_err = _mean_mat_dists(
+                    noiseless_mutual_infos, mi_match
                 )
 
                 num_noiseless_char_iterations = len(noiseless_mean_char_dists)
@@ -265,6 +336,48 @@ def plot_ibm_network_inference(
                     **std_err_line_styles,
                 )
 
+                num_noiseless_vn_iterations = len(noiseless_mean_vn_dists)
+                num_vn_iterations = len(mean_vn_dists)
+                vn_opt_ax2.semilogy(range(num_vn_iterations), mean_vn_dists, **mean_line_styles)
+                vn_opt_ax2.fill_between(
+                    range(num_vn_iterations),
+                    mean_vn_dists - mean_vn_dist_std_err,
+                    mean_vn_dists + mean_vn_dist_std_err,
+                    **std_err_line_styles,
+                )
+                vn_opt_ax3.semilogy(
+                    range(num_noiseless_vn_iterations),
+                    noiseless_mean_vn_dists,
+                    **mean_line_styles,
+                )
+                vn_opt_ax3.fill_between(
+                    range(num_noiseless_vn_iterations),
+                    noiseless_mean_vn_dists - noiseless_mean_vn_dist_std_err,
+                    noiseless_mean_vn_dists + noiseless_mean_vn_dist_std_err,
+                    **std_err_line_styles,
+                )
+
+                num_noiseless_mi_iterations = len(noiseless_mean_mi_dists)
+                num_mi_iterations = len(mean_mi_dists)
+                mi_opt_ax2.semilogy(range(num_mi_iterations), mean_mi_dists, **mean_line_styles)
+                mi_opt_ax2.fill_between(
+                    range(num_mi_iterations),
+                    mean_mi_dists - mean_mi_dist_std_err,
+                    mean_mi_dists + mean_mi_dist_std_err,
+                    **std_err_line_styles,
+                )
+                mi_opt_ax3.semilogy(
+                    range(num_noiseless_mi_iterations),
+                    noiseless_mean_mi_dists,
+                    **mean_line_styles,
+                )
+                mi_opt_ax3.fill_between(
+                    range(num_noiseless_mi_iterations),
+                    noiseless_mean_mi_dists - noiseless_mean_mi_dist_std_err,
+                    noiseless_mean_mi_dists + noiseless_mean_mi_dist_std_err,
+                    **std_err_line_styles,
+                )
+
     if len(opt_yticks):
         cov_opt_ax1.set_yticks(opt_yticks[0])
         cov_opt_ax2.set_yticks(opt_yticks[1])
@@ -273,15 +386,15 @@ def plot_ibm_network_inference(
         char_opt_ax2.set_yticks(opt_yticks[4])
         char_opt_ax3.set_yticks(opt_yticks[5])
 
-    plt.figlegend(handles=line_handles, loc="lower center", ncol=4)
+    plt.figlegend(handles=line_handles, loc="lower center", ncol=4, fontsize=subplot_fontsize)
 
     opt_fig.tight_layout()
-    plt.subplots_adjust(bottom=0.25)
+    plt.subplots_adjust(bottom=0.15)
 
     plt.show()
 
 
-def _char_mats_from_data_jsons(vn_data_jsons, mi_data_jsons, noiseless=False):
+def _char_mats_from_data_jsons(vn_data_jsons, mi_data_jsons, noiseless=False, avg_data=None):
     mi_key = "mutual_infos"
     vn_key = "vn_entropies"
     if noiseless:
@@ -289,7 +402,7 @@ def _char_mats_from_data_jsons(vn_data_jsons, mi_data_jsons, noiseless=False):
         vn_key = "noiseless_" + vn_key
 
     num_mi_trials = len(mi_data_jsons)
-    num_vn_trials = len(mi_data_jsons)
+    num_vn_trials = len(vn_data_jsons)
 
     print("num trials vn/mi : ", num_vn_trials, num_mi_trials)
 
@@ -299,8 +412,38 @@ def _char_mats_from_data_jsons(vn_data_jsons, mi_data_jsons, noiseless=False):
     print("num_iterations vn/mi : ", num_vn_iterations, num_mi_iterations)
     num_qubits = len(vn_data_jsons[0][vn_key][0])
 
+    shannon_ents = [
+        [vn_data_jsons[k][vn_key][j] for k in range(num_vn_trials)]
+        for j in range(num_vn_iterations)
+    ]
+
+    mutual_infos = [
+        [mi_data_jsons[k][mi_key][j] for k in range(num_mi_trials)]
+        for j in range(num_mi_iterations)
+    ]
+
     char_mats = []
-    if num_mi_iterations > num_vn_iterations:
+    if avg_data == None:
+        num_iterations = min(num_mi_iterations, num_vn_iterations)
+        num_trials = min(num_mi_trials, num_vn_trials)
+
+        for j in range(num_iterations):
+            char_mats += [[]]
+            for k in range(num_trials):
+                char_mat = np.zeros((num_qubits, num_qubits))
+                for q in range(num_qubits):
+                    char_mat[q, q] = shannon_ents[j][k][q]
+
+                mi_id = 0
+                for q1 in range(num_qubits):
+                    for q2 in range(q1 + 1, num_qubits):
+                        char_mat[q1, q2] = mutual_infos[j][k][mi_id]
+                        char_mat[q2, q1] = mutual_infos[j][k][mi_id]
+                        mi_id += 1
+
+                char_mats[j] += [char_mat]
+
+    elif avg_data == "vn":
         total_sum_vn_entropies = np.zeros(num_qubits)
         for k in range(len(vn_data_jsons)):
             for j in range(len(vn_data_jsons[k][vn_key])):
@@ -322,7 +465,7 @@ def _char_mats_from_data_jsons(vn_data_jsons, mi_data_jsons, noiseless=False):
                         mi_id += 1
 
                 char_mats[j] += [char_mat]
-    else:
+    elif avg_data == "mi":
         total_sum_mi = np.zeros(math.comb(num_qubits, 2))
         for j in range(num_mi_iterations):
             for k in range(num_mi_trials):
@@ -344,7 +487,7 @@ def _char_mats_from_data_jsons(vn_data_jsons, mi_data_jsons, noiseless=False):
 
                 char_mats[j] += [char_mat]
 
-    return char_mats
+    return char_mats, shannon_ents, mutual_infos
 
 
 def _mean_mat_dists(mats, mat_match):
@@ -353,8 +496,10 @@ def _mean_mat_dists(mats, mat_match):
     for j in range(len(mats)):
         mean_data_list = []
         for k in range(len(mats[j])):
-            mat_diff = mat_match - np.array(mats[j][k])
-            mean_data_list += [np.sqrt(np.trace(mat_diff.T @ mat_diff))]
+            # mat_diff = mat_match - np.array(mats[j][k])
+            # mean_data_list += [np.sqrt(np.trace(mat_diff.T @ mat_diff))]
+            mat_diff_squared = (mat_match - np.array(mats[j][k])) ** 2
+            mean_data_list += [np.sqrt(np.sum(mat_diff_squared))]
 
         mean_mat_dist_std_err += [np.std(mean_data_list) / np.sqrt(len(mats[j]))]
         mean_mat_dists += [sum(mean_data_list) / len(mats[j])]

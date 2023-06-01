@@ -36,6 +36,7 @@ qnetti.plot_ibm_network_inference(
     #     [10,5,1],
     #     [10,5,1,5e-1,1e-1],
     # ],
+    avg_data="vn",
 )
 
 data_dir = "./data/ibm_inference_5-qubit_zero_state_shot_dependence/"
@@ -62,13 +63,14 @@ qnetti.plot_ibm_network_inference(
     #     [5,1,5e-1,1e-1],
     #     [5,1,5e-1,1e-1],
     #     [5,1,5e-1,1e-1,5e-2,1e-2],
-    # ]
+    # ],
+    avg_data="mi",
 )
 
 data_dir = "./data/ibm_inference_W_state_2-qubit_ghz_state_shot_dependence/"
 # ibm_device_name = "ibmq_qasm_simulator"
 # ibm_device_name = "default.qubit"
-ibm_device_nmae = "ibmq_belem"
+ibm_device_name = "ibmq_belem"
 shots_list = [10, 100, 1000, 10000]
 num_qubits = 5
 
@@ -82,12 +84,13 @@ cov_match = np.array(
     ]
 )
 
-w_state_mi = 0.34997758
+w_state_mi = 0.3499775783516452 # {0,1} and {+,-} basis
+w_state_vn = 0.9182958340544893 # computational basis
 char_match = np.array(
     [
-        [1, w_state_mi, w_state_mi, 0, 0],
-        [w_state_mi, 1, w_state_mi, 0, 0],
-        [w_state_mi, w_state_mi, 1, 0, 0],
+        [w_state_vn, w_state_mi, w_state_mi, 0, 0],
+        [w_state_mi, w_state_vn, w_state_mi, 0, 0],
+        [w_state_mi, w_state_mi, w_state_vn, 0, 0],
         [0, 0, 0, 1, 1],
         [0, 0, 0, 1, 1],
     ]
@@ -107,7 +110,7 @@ qnetti.plot_ibm_network_inference(
     shots_list,
     num_qubits,
     prep_node=w_state_prep_node,
-    title="W State 2-Qubit GHZ State",
+    title="W State and 2-Qubit GHZ State",
     cov_mat_match=cov_match,
     mi_char_mat_match=char_match,
     mmi_char_mat_match=char_match,
