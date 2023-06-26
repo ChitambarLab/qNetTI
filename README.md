@@ -2,7 +2,8 @@
 
 *Python tools and demos for inferring quantum network topology.*
 
-[![Tests](https://github.com/ChitambarLab/qNetTI/actions/workflows/run_tests.yml/badge.svg?branch=main)](https://github.com/ChitambarLab/qNetTI/actions/workflows/run_tests.yml)[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Tests](https://github.com/ChitambarLab/qNetTI/actions/workflows/run_tests.yml/badge.svg?branch=main)](https://github.com/ChitambarLab/qNetTI/actions/workflows/run_tests.yml)[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)[![DOI](https://zenodo.org/badge/581250970.svg)](https://zenodo.org/badge/latestdoi/581250970)
+
 
 See our preprint titled "Inferring Quantum Network Topology using Local Qubit Measurements" for details [https://arxiv.org/abs/2212.07987](https://arxiv.org/abs/2212.07987).
 
