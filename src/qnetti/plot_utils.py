@@ -1,4 +1,6 @@
 from matplotlib import pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
+
 from functools import reduce
 import numpy as np
 import math
@@ -15,7 +17,6 @@ _MARKERS = ["o", "d", "P", "^"]
 
 def plot_ibm_network_inference(
     data_dir,
-    device_name,
     shots_list,
     num_qubits,
     prep_node,
@@ -514,7 +515,7 @@ def plot_qubit_inference_heat_map(
     data_dir, device_name, title="", cov_mat_match=None, char_mat_match=None
 ):
     heat_map_fig, (hm_cov_mat_axes, hm_char_mat_axes) = plt.subplots(
-        ncols=5, nrows=2, figsize=(12, 5)
+        ncols=6, nrows=2, figsize=(14, 5)
     )  # , constrained_layout=True)
 
     title_fontsize = 18
@@ -524,15 +525,26 @@ def plot_qubit_inference_heat_map(
         fontsize=title_fontsize,
     )
 
-    hm_cov_mat_axes[0].set_title("Ideal", fontweight="bold")
-    hm_cov_mat_axes[1].set_title("10 Shots", fontweight="bold")
-    hm_cov_mat_axes[2].set_title("100 Shots", fontweight="bold")
-    hm_cov_mat_axes[3].set_title("1000 Shots", fontweight="bold")
-    hm_cov_mat_axes[4].set_title("10000 Shots", fontweight="bold")
+    hm_cov_mat_axes[0].set_title("Inference Error\n", fontweight="bold")
+    hm_cov_mat_axes[1].set_title("Ideal", fontweight="bold")
+    hm_cov_mat_axes[2].set_title("10 Shots", fontweight="bold")
+    hm_cov_mat_axes[3].set_title("100 Shots", fontweight="bold")
+    hm_cov_mat_axes[4].set_title("1000 Shots", fontweight="bold")
+    hm_cov_mat_axes[5].set_title("10000 Shots", fontweight="bold")
+
+    hm_char_mat_axes[0].set_xlabel("Number of Shots")
+    hm_char_mat_axes[0].set_ylabel("Distance to Ideal")
+    hm_cov_mat_axes[0].set_ylabel("Distance to Ideal")
+    hm_char_mat_axes[0].set_xticks([0, 1, 2, 3])
+    hm_char_mat_axes[0].yaxis.set_major_formatter(FormatStrFormatter("%.1f"))
+    hm_cov_mat_axes[0].set_xticks([0, 1, 2, 3])
+    hm_cov_mat_axes[0].yaxis.set_major_formatter(FormatStrFormatter("%.1f"))
+    hm_char_mat_axes[0].set_xticklabels(["10", "100", "1K", "10K"])
+    hm_cov_mat_axes[0].set_xticklabels(["10", "100", "1K", "10K"])
 
     for ax_title, ax in [
-        ("Covariance", hm_cov_mat_axes[0]),
-        ("Characteristic", hm_char_mat_axes[0]),
+        ("Covariance\n", hm_cov_mat_axes[0]),
+        ("Characteristic\n", hm_char_mat_axes[0]),
     ]:
         ax.annotate(
             ax_title,
@@ -547,17 +559,19 @@ def plot_qubit_inference_heat_map(
             fontweight="bold",
         )
 
-    pcm_cov = hm_cov_mat_axes[0].matshow(cov_mat_match, vmin=0, vmax=1)
-    pcm_char = hm_char_mat_axes[0].matshow(char_mat_match, vmin=0, vmax=1)
+    pcm_cov = hm_cov_mat_axes[1].matshow(cov_mat_match, vmin=0, vmax=1)
+    pcm_char = hm_char_mat_axes[1].matshow(char_mat_match, vmin=0, vmax=1)
 
     cb_ax1 = heat_map_fig.add_axes([0.95, 0.04, 0.01, 0.8])
     cbar = heat_map_fig.colorbar(pcm_cov, cax=cb_ax1)
 
-    for ax in [*hm_cov_mat_axes, *hm_char_mat_axes]:
+    for ax in [*hm_cov_mat_axes[1:], *hm_char_mat_axes[1:]]:
         ax.set_xticks([x - 0.5 for x in range(1, 5)], minor=True)
         ax.set_yticks([y - 0.5 for y in range(1, 5)], minor=True)
         ax.grid(which="minor", ls="-", lw=1, color="black")
 
+    cov_dists = []
+    char_dists = []
     for i, shots in enumerate([10, 100, 1000, 10000]):
         shots_path = "/shots_" + str(shots)
 
@@ -583,6 +597,8 @@ def plot_qubit_inference_heat_map(
         num_vn_iterations = len(vn_data_jsons[-1]["vn_entropies"])
 
         max_cov_mat = np.zeros((5, 5))
+        # for j in range(num_cov_iterations - 5, num_cov_iterations):
+
         for j in range(num_cov_iterations):
             for k in range(num_cov_trials):
                 cov_mat = np.abs(np.array(cov_data_jsons[k]["cov_mats"][j]))
@@ -591,17 +607,10 @@ def plot_qubit_inference_heat_map(
                         if cov_mat[q1, q2] > max_cov_mat[q1, q2]:
                             max_cov_mat[q1, q2] = cov_mat[q1, q2]
 
-        print(
-            "cov max dist: ",
-            np.sum(np.abs(cov_mat_match - max_cov_mat)) / 25,
-            " SHots:  ",
-            shots,
-            "",
-        )
-
-        pcm = hm_cov_mat_axes[i + 1].matshow(max_cov_mat, vmin=0, vmax=1)
+        pcm = hm_cov_mat_axes[i + 2].matshow(max_cov_mat, vmin=0, vmax=1)
 
         min_vn_entropies = np.ones(5)
+        # for j in range(num_vn_iterations - 5, num_vn_iterations):
         for j in range(num_vn_iterations):
             for k in range(num_vn_trials):
                 vn_ents = vn_data_jsons[k]["vn_entropies"][j]
@@ -614,6 +623,7 @@ def plot_qubit_inference_heat_map(
         for q in range(5):
             max_char_mat[q, q] = min_vn_entropies[q]
 
+        # for j in range(num_mi_iterations - 5, num_mi_iterations):
         for j in range(num_mi_iterations):
             for k in range(num_mi_trials):
                 mis = np.array(mi_data_jsons[k]["mutual_infos"][j])
@@ -625,8 +635,16 @@ def plot_qubit_inference_heat_map(
                             max_char_mat[q2, q1] = mis[mi_id]
                         mi_id += 1
 
-        pcm = hm_char_mat_axes[i + 1].matshow(max_char_mat, vmin=0, vmax=1)
-        print("I : ", i)
+        pcm = hm_char_mat_axes[i + 2].matshow(max_char_mat, vmin=0, vmax=1)
+
+        cov_dist = np.sqrt(np.sum((cov_mat_match - max_cov_mat) ** 2))
+        cov_dists += [cov_dist]
+
+        char_dist = np.sqrt(np.sum((char_mat_match - max_char_mat) ** 2))
+        char_dists += [char_dist]
+
+    hm_cov_mat_axes[0].bar([0, 1, 2, 3], cov_dists)
+    hm_char_mat_axes[0].bar([0, 1, 2, 3], char_dists)
 
     heat_map_fig.tight_layout()
     heat_map_fig.subplots_adjust(right=0.92)
