@@ -51,7 +51,7 @@ def qubit_covariance_matrix_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_
     """
     wires = meas_wires if meas_wires else prep_node.wires
 
-    probs_qnode = qubit_probs_qnode_fn(
+    probs_qnode, dev = qubit_probs_qnode_fn(
         prep_node, meas_wires=meas_wires, dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
     )
 
@@ -103,9 +103,7 @@ def optimize_covariance_matrix(
     meas_wires=None,
     dev_kwargs={},
     qnode_kwargs={},
-    step_size=0.1,
-    num_steps=10,
-    verbose=False,
+    **opt_kwargs,
 ):
     """Optimizes the arbitrary qubit measurements to maximize the distance between
     the covariance matrix and the origin.
@@ -147,11 +145,15 @@ def optimize_covariance_matrix(
     )
 
     opt_dict = optimize(
-        cov_cost, init_settings, step_size=step_size, num_steps=num_steps, verbose=verbose
+        cov_cost,
+        init_settings,
+        **opt_kwargs,
     )
 
-    cov_mat = qubit_covariance_matrix_fn(
+    cov_mat_fn = qubit_covariance_matrix_fn(
         prep_node, meas_wires=meas_wires, dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
-    )(opt_dict["opt_settings"])
+    )
+
+    cov_mat = cov_mat_fn(opt_dict["opt_settings"])
 
     return cov_mat, opt_dict

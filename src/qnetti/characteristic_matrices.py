@@ -121,9 +121,9 @@ def qubit_measured_mutual_infos_fn(prep_node, meas_wires=None, dev_kwargs={}, qn
     wires = meas_wires if meas_wires else prep_node.wires
 
     probs_qnodes = []
-    for q1 in wires:
-        for q2 in wires[q1 + 1 :]:
-            probs_qnode = qubit_probs_qnode_fn(
+    for i, q1 in enumerate(wires):
+        for q2 in wires[i + 1 :]:
+            probs_qnode, dev = qubit_probs_qnode_fn(
                 prep_node, meas_wires=[q1, q2], dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
             )
             probs_qnodes += [probs_qnode]
@@ -167,7 +167,7 @@ def shannon_entropy_cost_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kwa
     :rtype: qml.QNode
     """
 
-    probs_qnode = qubit_probs_qnode_fn(
+    probs_qnode, dev = qubit_probs_qnode_fn(
         prep_node, meas_wires=meas_wires, dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
     )
 
@@ -208,7 +208,7 @@ def mutual_info_cost_fn(prep_node, meas_wires=None, dev_kwargs={}, qnode_kwargs=
     :rtype: qml.QNode
     """
 
-    probs_qnode = qubit_probs_qnode_fn(
+    probs_qnode, dev = qubit_probs_qnode_fn(
         prep_node, meas_wires=meas_wires, dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
     )
 
@@ -298,7 +298,7 @@ def qubit_characteristic_matrix_fn(
     :rtype: function
     """
 
-    probs_qnode = qubit_probs_qnode_fn(
+    probs_qnode, dev = qubit_probs_qnode_fn(
         prep_node, meas_wires=meas_wires, dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
     )
 
@@ -338,9 +338,7 @@ def optimize_vn_entropy(
     meas_wires=None,
     dev_kwargs={},
     qnode_kwargs={},
-    step_size=0.1,
-    num_steps=10,
-    verbose=False,
+    **opt_kwargs,
 ):
     """Optimizes the network's arbitrary qubit measurements to minimize the :meth:`qnetti.shannon_entropy_cost_fn`.
     The minimum Shannon entropy corresponds to the von Neumann entropy.
@@ -382,9 +380,7 @@ def optimize_vn_entropy(
     return optimize(
         shannon_entropy_cost,
         init_settings,
-        step_size=step_size,
-        num_steps=num_steps,
-        verbose=verbose,
+        **opt_kwargs,
     )
 
 
@@ -393,9 +389,7 @@ def optimize_mutual_info(
     meas_wires=None,
     dev_kwargs={},
     qnode_kwargs={},
-    step_size=0.1,
-    num_steps=10,
-    verbose=False,
+    **opt_kwargs,
 ):
     """Optimizes the network's arbitrary qubit measurements to minimize the :meth:`qnetti.mutual_info_cost_fn`.
     See the :meth:`qnetti.optimize` method for details regarding the gradient optimization.
@@ -435,9 +429,7 @@ def optimize_mutual_info(
     return optimize(
         mutual_info_cost,
         init_settings,
-        step_size=step_size,
-        num_steps=num_steps,
-        verbose=verbose,
+        **opt_kwargs,
     )
 
 
@@ -446,9 +438,7 @@ def optimize_measured_mutual_info(
     meas_wires=None,
     dev_kwargs={},
     qnode_kwargs={},
-    step_size=0.1,
-    num_steps=10,
-    verbose=False,
+    **opt_kwargs,
 ):
     """Optimizes the network's arbitrary qubit measurements to minimize the :meth:`qnetti.measured_mutual_info_cost_fn`.
     See the :meth:`qnetti.optimize` method for details regarding the gradient optimization.
@@ -486,13 +476,7 @@ def optimize_measured_mutual_info(
         prep_node, meas_wires=meas_wires, dev_kwargs=dev_kwargs, qnode_kwargs=qnode_kwargs
     )
 
-    return optimize(
-        mutual_info_cost,
-        init_settings,
-        step_size=step_size,
-        num_steps=num_steps,
-        verbose=verbose,
-    )
+    return optimize(mutual_info_cost, init_settings, **opt_kwargs)
 
 
 def optimize_characteristic_matrix(
