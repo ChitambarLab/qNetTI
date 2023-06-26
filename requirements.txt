@@ -4,3 +4,4 @@ pennylane-qiskit==0.29
 qnetvo==0.4.2
 black[jupyter]
 jupyter
+matplotlib==3.7
