@@ -30,7 +30,6 @@ python script/infer_ibm_network_zero_state_shot_dependence.py cov 2 data/ibm_inf
 # token = "XYZ"   # secret IBM Q API token from above
 # IBMQ.save_account(
 #     token=token, hub="ibm-q", group="open", project="main", overwrite=True    # open-access account
-#     # token=token, hub="ibm-q-ornl", group="ornl", project="chm185"    # DOE/ORNL account
 # )
 
 # NOTE : use the next line if you have previously enabled your account using the above lines

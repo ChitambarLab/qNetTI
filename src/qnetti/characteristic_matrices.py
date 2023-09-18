@@ -490,10 +490,10 @@ def optimize_characteristic_matrix(
 ):
     """Obtains the qubit characteristic matrix for a given multi-qubit state preparation.
 
-    Mathematically, the qubit characteristic matrix is a real-valued matrix :math:`Q \\in \\mathbb{R}^{n \times n}`,
+    Mathematically, the qubit characteristic matrix is a real-valued matrix :math:`Q \\in \\mathbb{R}^{n \\times n}`,
     :math:`n` being the number of qubits in a network. On the diagonal, :math:`Q` stores the von Neumann entropy of
     the respective qubit, i.e. for any :math:`i \\in [n]`, :math:`Q_{ii} = S(q_i)`. On the other hand, off-diagonal
-    entries stores the measured mutual information between qubits: :math:`Q_{ij} = I_m(q_i;q_j)` for :math:`i \neq j`.
+    entries stores the measured mutual information between qubits: :math:`Q_{ij} = I_m(q_i;q_j)` for :math:`i \\neq j`.
     For further details, see https://arxiv.org/abs/2212.07987.
 
     This function uses the :meth:`qnetti.optimize_vn_entropy` and :meth:`qnetti.optimize_mutual_info` methods to

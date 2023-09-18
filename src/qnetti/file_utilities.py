@@ -5,10 +5,27 @@ import re
 
 
 def datetime_now_string():
+    """
+    Retrieves the current datetime in universal time coordinates (UTC).
+
+    :returns: The current datetime formatted as ``YYYY-MM-DDTHH-mm-SSZ``
+    :rtype: String
+    """
     return datetime.utcnow().strftime("%Y-%m-%dT%H-%M-%SZ")
 
 
 def tmp_dir(filepath):
+    """
+    Creates a temporary directory ``tmp/``  in the directory
+    specified by ``filepath``.
+
+    :param filepath: The filepath to the directory in
+                     which to create a temporary directory.
+    :type filepath: String
+
+    :returns: The path to ``"filepath/tmp/"``
+    :rtype: String
+    """
     tmp_path = filepath + "tmp/"
     if not os.path.isdir(tmp_path):
         os.mkdir(tmp_path)
@@ -17,6 +34,20 @@ def tmp_dir(filepath):
 
 
 def mkdir(filepath, dir_name):
+    """
+    Creates a directory ``dir_name/``  in the directory
+    specified by ``filepath``.
+
+    :param filepath: The filepath to the directory in
+                     which to create the directory.
+    :type filepath: String
+
+    :param dir_name: The name of the directory to create.
+    :type dir_name: String
+
+    :returns: The path to ``"filepath/dir_name/"``
+    :rtype: String
+    """
     dir_path = filepath + dir_name
     if not os.path.isdir(dir_path):
         os.mkdir(dir_path)
@@ -27,6 +58,15 @@ def mkdir(filepath, dir_name):
 def get_files(path, regex):
     """Retrieves all data files that match the ``regex`` in the
     directory specified by ``path``.
+
+    :param path: A file path to search in.
+    :type path: string
+
+    :param regex: A regular expression.
+    :type regex: regex
+
+    :returns: A list of file names that match the specified regex.
+    :rtype: list[String]
     """
     return [
         os.path.join(path, f)

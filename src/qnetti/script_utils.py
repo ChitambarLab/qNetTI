@@ -34,7 +34,25 @@ def infer_ibm_network_shot_dependence(
     """
     Performs network inference on an IBMQ machine over a range of shot numbers.
     The prepared state is specified as the ``prep_node`` and the number of shots
-    are passed aas the ``shots_list`` parameter.
+    are passed as the ``shots_list`` parameter.
+
+
+    The connection to the IBM hardware requires an IBMQ account. The IBM provider can
+    be constructed using the private ``token`` as:
+
+    .. code-block:: python
+
+        token = "XYZ"   # secret IBMQ API token for your account
+        IBMQ.save_account(token=token, hub="ibm-q", group="open", project="main", overwrite=True)
+
+        provider = IBMQ.load_account()
+
+
+    :param provide: An IBM provider (see above).
+    :type provider: IBMQ.provide
+
+    :param prep_node: A qNetVO ``PrepareNode`` class describing the state to infer.
+    :type prep_node: qnetvo.PrepareNode
     """
 
     num_qubits = len(meas_wires) if meas_wires else len(prep_node.wires)
