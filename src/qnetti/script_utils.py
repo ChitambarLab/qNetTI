@@ -1,5 +1,3 @@
-import qnetvo
-import pennylane_qiskit
 from time import time
 
 
