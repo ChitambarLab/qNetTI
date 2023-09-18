@@ -2,3 +2,4 @@
 **/*.egg-info/*
 **/**/tmp/*
 **/**/.DS_Store
+docs/build/*
