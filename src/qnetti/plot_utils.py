@@ -29,6 +29,10 @@ def plot_ibm_network_inference(
     opt_yticks=[],
     avg_data=None,
 ):
+    """
+    Creates a plot of the data acquired from the quantum computing hardware.
+    See Fig. 8 of our `Arxiv Paper <https://arxiv.org/abs/2212.07987>`_.
+    """
     # setting font sizes
     title_fontsize = 20
     subplot_fontsize = 12
@@ -514,6 +518,10 @@ def _mean_mat_dists(mats, mat_match):
 def plot_qubit_inference_heat_map(
     data_dir, device_name, title="", cov_mat_match=None, char_mat_match=None
 ):
+    """
+    Creates a heatmap plot of the data acquired from the quantum computing hardware.
+    See Fig. 9 of our `Arxiv Paper <https://arxiv.org/abs/2212.07987>`_
+    """
     heat_map_fig, (hm_cov_mat_axes, hm_char_mat_axes) = plt.subplots(
         ncols=6, nrows=2, figsize=(14, 5)
     )  # , constrained_layout=True)
