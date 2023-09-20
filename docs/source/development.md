@@ -86,3 +86,15 @@ This command will build a static HTML site in the `docs/build/html` directory. T
 ```
 
 to initialize an HTTP server hosting the site locally.
+
+Semantic Versioning
+-------------------
+
+This project uses `semantic versioning <https://semver.org/>`_ to manage
+releases and maintain consistent software.
+
+Packaging and Releases
+----------------------
+
+This project is packaged using PyPI, the `Python Package Index <https://pypi.org/>`_.
+Please refer to `this tutorial <https://packaging.python.org/en/latest/tutorials/packaging-projects/>`_ for details on releasing a new version.
