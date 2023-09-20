@@ -2,7 +2,7 @@
 
 *Python tools and demos for inferring quantum network topology.*
 
-[![Latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://chitambarlab.github.io/qNetTI/index.html)[![Tests](https://github.com/ChitambarLab/qNetTI/actions/workflows/run_tests.yml/badge.svg?branch=main)](https://github.com/ChitambarLab/qNetTI/actions/workflows/run_tests.yml)[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)[![DOI](https://zenodo.org/badge/581250970.svg)](https://zenodo.org/badge/latestdoi/581250970)
+[![Latest](https://img.shields.io/badge/docs-latest-blue.svg)](https://chitambarlab.github.io/qNetTI/index.html)[![PyPI version](https://badge.fury.io/py/qNetTI.svg)](https://badge.fury.io/py/qNetTI)[![Tests](https://github.com/ChitambarLab/qNetTI/actions/workflows/run_tests.yml/badge.svg?branch=main)](https://github.com/ChitambarLab/qNetTI/actions/workflows/run_tests.yml)[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)[![DOI](https://zenodo.org/badge/581250970.svg)](https://zenodo.org/badge/latestdoi/581250970)
 
 ## Features
 
@@ -49,6 +49,15 @@ For optimal use, QNetTI should be used with the compatible versions of PennyLane
 </p>
 </div>
 
+## Project Structure
+
+* `./src/qnetti` - Application code.
+* `./test` - Unit tests for application code.
+* `./script` - Scripts for numerical experiments, data collection, and plotting.
+* `./data` - Stored data from numerical experiments.
+* `./demos` - User oriented notebooks demoing the application of our code. 
+* `./docs` - Source code for generating the static documentation pages.
+
 ## Contributing
 
 We welcome outside contributions to qNetTI.
@@ -63,25 +72,15 @@ See [CITATION.bib](https://github.com/ChitambarLab/qNetTI/blob/main/CITATION.bib
 
 ## License
 
-QNetVO is free and open-source.
+QNetTI is free and open-source.
 The software is released under the Apache License, Version 2.0.
 See [LICENSE](https://github.com/ChitambarLab/qNetTI/blob/main/LICENSE) for details.
 
-## Acknowledgments
+## Acknowledgements
 
-We thank [Xanadu](https://www.xanadu.ai/), the
-[UIUC Physics Department](https://physics.illinois.edu/), and the
-[Quantum Information Science and Engineering Network (QISE-Net)](https://qisenet.uchicago.edu/)
-for their support of qNetVO.
-Work funded by NSF award DMR-1747426.
+This material is based upon work supported by the U.S. Department of Energy, Office of Science, National
+Quantum Information Science Research Centers, and the Office of Advanced Scientific Computing Research,
+Accelerated Research for Quantum Computing program under contract number DE-AC02-06CH11357.
 
 
-### Project Structure
-
-* `./src/qnetti` - Application code.
-* `./test` - Unit tests for application code.
-* `./script` - Scripts for numerical experiments, data collection, and plotting.
-* `./data` - Stored data from numerical experiments.
-* `./demos` - User oriented notebooks demoing the application of our code. 
-* `./docs` - Source code for generating the static documentation pages.
 
